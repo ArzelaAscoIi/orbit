@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a0a6af"/>
+    </marker>
+    <marker id="o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ff9b5e"/>
+    </marker>
+  </defs>
+  <rect width="960" height="600" fill="#282c34"/>
+
+  <!-- You -->
+  <rect x="40" y="40" width="250" height="96" fill="none" stroke="#ff9b5e" stroke-width="1.5"/>
+  <text x="58" y="70" fill="#ff9b5e" font-size="13">// you</text>
+  <text x="58" y="96" fill="#eceef1" font-size="15">"Ship saved views:</text>
+  <text x="58" y="118" fill="#eceef1" font-size="15"> Robo builds, I review."</text>
+
+  <!-- Clone -->
+  <rect x="355" y="40" width="270" height="96" fill="none" stroke="#464c56" stroke-width="1.5"/>
+  <text x="373" y="70" fill="#a0a6af" font-size="13">// the clone  ⌘J</text>
+  <text x="373" y="96" fill="#eceef1" font-size="15">a Claude Code chat</text>
+  <text x="373" y="118" fill="#b0b5bd" font-size="13">steers Orbit via orbit ctl</text>
+
+  <!-- Linear -->
+  <rect x="680" y="40" width="250" height="96" fill="none" stroke="#464c56" stroke-width="1.5"/>
+  <text x="698" y="70" fill="#a0a6af" font-size="13">// linear</text>
+  <text x="698" y="96" fill="#eceef1" font-size="15">WEB-170 parent</text>
+  <text x="698" y="118" fill="#b0b5bd" font-size="13">4 sub-tickets, blocks order</text>
+
+  <line x1="290" y1="88" x2="353" y2="88" stroke="#ff9b5e" stroke-width="1.5" marker-end="url(#o)"/>
+  <line x1="625" y1="88" x2="678" y2="88" stroke="#a0a6af" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="634" y="78" fill="#a0a6af" font-size="11">files</text>
+
+  <!-- Drive loop -->
+  <rect x="200" y="200" width="560" height="150" fill="#2f343d" stroke="#464c56" stroke-width="1.5"/>
+  <text x="222" y="230" fill="#a0a6af" font-size="13">// orbit drives the parent  (Rust, every 2 min, no tokens)</text>
+  <text x="222" y="262" fill="#eceef1" font-size="14">next  = Todo sub-tickets whose blockers merged</text>
+  <text x="222" y="286" fill="#eceef1" font-size="14">limit = 2 in flight</text>
+  <text x="222" y="310" fill="#eceef1" font-size="14">quiet 30 min where the bot waits → its Plan/Build, once</text>
+  <text x="222" y="334" fill="#7fd99a" font-size="14">PR open = implemented: the review is yours</text>
+  <line x1="805" y1="136" x2="700" y2="198" stroke="#a0a6af" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="770" y="180" fill="#a0a6af" font-size="11">read</text>
+
+  <!-- Workers -->
+  <rect x="120" y="420" width="300" height="96" fill="none" stroke="#464c56" stroke-width="1.5"/>
+  <text x="138" y="450" fill="#a0a6af" font-size="13">// cloud bot (Robo)</text>
+  <text x="138" y="476" fill="#eceef1" font-size="14">WEB-171  PR open ✓</text>
+  <text x="138" y="498" fill="#eceef1" font-size="14">WEB-172  building ◐</text>
+
+  <rect x="540" y="420" width="300" height="96" fill="none" stroke="#464c56" stroke-width="1.5"/>
+  <text x="558" y="450" fill="#a0a6af" font-size="13">// or local sessions</text>
+  <text x="558" y="476" fill="#eceef1" font-size="14">one per ticket, own worktree</text>
+  <text x="558" y="498" fill="#b0b5bd" font-size="14">WEB-173 waits on WEB-171</text>
+
+  <line x1="380" y1="350" x2="290" y2="418" stroke="#a0a6af" stroke-width="1.5" marker-end="url(#a)"/>
+  <line x1="580" y1="350" x2="670" y2="418" stroke="#a0a6af" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="214" y="385" fill="#a0a6af" font-size="11">Todo for the bot</text>
+  <text x="655" y="380" fill="#a0a6af" font-size="11">/build</text>
+
+  <!-- Back to you -->
+  <path d="M120,468 C 48,468 48,300 48,138" fill="none" stroke="#ff9b5e" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#o)"/>
+  <text x="30" y="430" fill="#ff9b5e" font-size="12" transform="rotate(-90 30 430)">only: review · blocked · merged</text>
+
+  <text x="40" y="566" fill="#a0a6af" font-size="12">The clone coordinates, never implements. Approve and merge stay your click.</text>
+</svg>

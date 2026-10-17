@@ -1,0 +1,10 @@
+/target
+.env
+/dist
+.DS_Store
+# Per-developer agent tooling (vendored skills, their lock file), not part of the app.
+/.agents/
+/.claude/
+/.goose/
+/skills-lock.json
+# A company fork commits its profiles/<name>/ and overlay.mk on purpose (docs/make-it-yours.md).

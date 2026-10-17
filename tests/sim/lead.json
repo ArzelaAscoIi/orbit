@@ -1,0 +1,1 @@
+["wait 2", "shot 01-for-you", "show intake", "shot 02-intake", "do Triage", "shot 03-triage", "show ktlo", "select 1", "wait 2", "shot 04-ktlo-ticket", "show work", "shot 05-work", "palette debug", "shot 06-palette-debug", "do TogglePalette", "show sessions", "shot 07-sessions", "show customers", "shot 08-customers"]

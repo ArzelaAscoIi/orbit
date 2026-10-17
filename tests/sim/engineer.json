@@ -1,0 +1,1 @@
+["wait 2", "shot 01-for-you", "do PlanToday", "shot 02-plan-my-day", "show stories", "shot 03-stories", "select 1", "wait 2", "shot 04-ticket", "tab diff", "wait 5", "shot 05-diff", "show intake", "shot 06-intake", "show work", "shot 07-work", "do SpotWork", "shot 08-work-for-me", "palette run", "shot 09-palette-run", "do TogglePalette", "show settings", "shot 10-settings"]

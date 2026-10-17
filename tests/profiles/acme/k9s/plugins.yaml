@@ -1,0 +1,11 @@
+plugins:
+  # Shift-G on pods: one row per deployment.
+  rollup:
+    shortCut: Shift-G
+    description: Rollup
+    scopes:
+      - pods
+    command: k9s-rollup
+    background: false
+    args:
+      - $NAMESPACE

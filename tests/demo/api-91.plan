@@ -1,0 +1,5 @@
+SUMMARY	Empty dashboards load
+KIND	terminal
+URL	-
+STEP	Empty dashboard	Fetch a dashboard without widgets	curl -s -H "Authorization: Bearer <TOKEN>" https://api.acme.example/v1/dashboards/<EMPTY_ID> | jq .widgets	An empty list, status 200
+STEP	Web app	Open that dashboard in the app	-	The empty state, not a blank page

@@ -1,0 +1,22 @@
+[
+  {"note": "Deploying a pipeline fails with a 500 Internal Server Error since this morning. The logs show a timeout in the pipeline service.", "bug": true},
+  {"note": "The Playground crashes when I paste a very long prompt. Expected it to truncate or warn, instead the page goes blank.", "bug": true},
+  {"note": "Search results disappear while the query is still running; they flash and then the list is empty.", "bug": true},
+  {"note": "Login with SSO redirects back to the login page in a loop after the latest release. It worked last week.", "bug": true},
+  {"note": "Uploading a PDF larger than 20 MB shows 'upload complete' but the file never appears in the list.", "bug": true},
+  {"note": "The Run panel shows the wrong token count: it reports 0 tokens for every run, although the model answered.", "bug": true},
+  {"note": "Renaming a pipeline throws an error 'name already taken' even when no other pipeline has that name.", "bug": true},
+  {"note": "Evaluation jobs get stuck in 'running' forever when one of the files fails to index.", "bug": true},
+  {"note": "The dashboard's date filter ignores the end date: results from after it still show up.", "bug": true},
+  {"note": "The API returns 403 for workspace admins on the /pipelines endpoint, but the docs say admins have access.", "bug": true},
+  {"note": "It would be great to have a dark mode for the Builder, many of us work late.", "bug": false},
+  {"note": "Please add an export to CSV button on the search history page so we can share results with the team.", "bug": false},
+  {"note": "We want to be able to schedule evaluation jobs to run every night.", "bug": false},
+  {"note": "Add support for Slack notifications when a pipeline deployment finishes.", "bug": false},
+  {"note": "Could the Playground remember the last model I picked, so I do not have to choose it every time?", "bug": false},
+  {"note": "Allow custom roles in RBAC, for example a read-only reviewer role.", "bug": false},
+  {"note": "Offer a template for a hybrid retrieval pipeline in the template gallery.", "bug": false},
+  {"note": "Show the cost of each pipeline run next to its latency in the Run panel.", "bug": false},
+  {"note": "Support uploading files from Google Drive directly.", "bug": false},
+  {"note": "Add keyboard shortcuts to the Builder canvas for connecting components.", "bug": false}
+]

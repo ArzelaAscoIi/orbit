@@ -1,0 +1,11 @@
+# cargo audit (CI). Each ignored advisory says why it does not reach Orbit.
+[advisories]
+ignore = [
+    # zip 8.6 comes only through candle-core (Laya's model library), whose
+    # latest release still pins zip 8. All three are about extracting an
+    # archive (permissions, symlinks, SUID bits); Orbit never extracts with
+    # the zip crate: Laya loads safetensors, updates unzip with ditto.
+    "RUSTSEC-2026-0367",
+    "RUSTSEC-2026-0368",
+    "RUSTSEC-2026-0369",
+]

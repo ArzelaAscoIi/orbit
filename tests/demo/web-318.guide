@@ -1,0 +1,10 @@
+SUMMARY	CSV exports now contain every row of a report, however large, instead of stopping at 10,000.
+WHY	Northwind's monthly usage export stopped at 10,000 rows, so totals did not match the dashboard. The export now reads the report page by page until the last page.
+RISK	low	Only the CSV export calls the new cursor. Memory stays flat because pages are written as they arrive. The new test covers 25,000 rows.
+ASK	-
+STEP	A cursor over every page	src/reports/rows.ts:7-18	Reports are stored in pages. The old fetchRows asked for one page of 10,000 and stopped there; rowCursor follows each page's next link until there is none.
+THINK	src/reports/rows.ts:14	const page = await query(reportId, { limit: opts.pageSize, after });	If the report changes while it is exported, a page can shift. Is the cursor stable for a running export?	Is the after cursor stable if rows are added during an export, or could a row show up twice?	snapshot the report first | document it | order by a stable id
+STEP	Stream the export	src/reports/export.ts:16-38	The export writes each page as it arrives and waits for drain when the client reads slowly, so a 1 GB report never sits in memory.
+THINK	src/reports/export.ts:8	const PAGE_SIZE = 2_000;	Smaller pages mean more queries for big reports. Is 2,000 measured or a guess?	Did you measure 2,000? A larger page could halve the queries for big exports.	keep 2,000 | measure 5,000 | make it a setting
+THINK	src/reports/export.ts:27	if (!header) {	A report with no rows never writes a header, so the file is empty.	An empty report now downloads an empty file without the header row. Is that intended?	write the header up front | keep it empty
+STEP	Tests for big reports	src/reports/export.test.ts:4-15	A 25,000 row report comes out with all rows plus one header, and the header is written once.

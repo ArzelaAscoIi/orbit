@@ -1,0 +1,71 @@
+[package]
+name = "orbit"
+version = "0.0.7"
+edition = "2024"
+license = "MIT"
+description = "A native Linear client that follows your team's bot, with Claude Code per ticket"
+repository = "https://github.com/ArzelaAscoIi/orbit"
+
+[dependencies]
+# Reads herdr's config.toml (src/herdr.rs), so its users keep their keys, theme and sounds.
+toml = { version = "1.1", default-features = false, features = ["parse", "serde"] }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Same UI stack as Spotifast: egui on glow, no browser engine.
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "links", "wayland", "x11"] }
+egui = "0.36"
+# Network work runs on a tokio runtime off the UI thread (src/backend.rs).
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "process", "time", "io-util"] }
+# Relative times ("3h ago") on tickets and the bot's timeline.
+jiff = "0.2"
+# rustls so the client builds without OpenSSL on every platform.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json", "http2"] }
+# Laya, the bug-or-not decision model (src/laya/), run in-process: candle
+# has ModernBERT, its encoder; tokenizers reads its tokenizer.json.
+candle-core = { version = "0.11", features = ["accelerate"] }
+candle-nn = { version = "0.11", features = ["accelerate"] }
+candle-transformers = { version = "0.11", features = ["accelerate"] }
+tokenizers = { version = "0.23", default-features = false, features = ["onig"] }
+# The embedded Claude Code terminal (src/claude/): a real pseudo-terminal
+# for the `claude` process and a VT100 screen model to draw it from.
+portable-pty = "0.9"
+vt100 = "0.16"
+# Images in ticket descriptions (Linear uploads), decoded for egui; eframe
+# already builds it (arboard), this adds the formats tickets carry.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+# Where the ticket-to-session map and each ticket's working folder live.
+directories = "6"
+# Claude Code session ids are UUIDs chosen up front with --session-id, so
+# the app knows the id before the first message and can resume it later.
+uuid = { version = "1", features = ["v4"] }
+# The Linear key lives in the OS keychain after the first login, never in a
+# file: macOS Keychain, Windows Credential Manager, or Secret Service.
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+# Sign in with Linear (src/oauth.rs): SHA-256 and base64url for the PKCE
+# challenge. Both already come with rustls, so they add nothing to the build.
+ring = "0.17"
+base64 = "0.23"
+# The Codex daemon's control socket speaks JSON-RPC over WebSocket (src/claude/codex.rs).
+tungstenite = "0.30"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# The browser in the Testing tab (src/browser.rs): a native WebKit view
+# over the window, so UI test plans are clicked through inside the app.
+wry = { version = "0.57", default-features = false }
+# The menu bar icon (src/tray.rs): an NSStatusItem with a native menu.
+tray-icon = { version = "0.26", default-features = false }
+# Native notifications (src/notify.rs): a click brings Orbit forward, not
+# Script Editor as osascript's do. Both already come with wry and arboard.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSBundle", "NSString"] }
+block2 = "0.6"
+
+# Dependencies optimized in debug builds too: Laya's model (candle) is
+# far slower unoptimized, and `make dev` should answer as fast as `make run`.
+# build.rs compiles profiles/ into the app (src/profile.rs).
+[build-dependencies]
+serde_json = "1"
+
+[profile.dev.package."*"]
+opt-level = 3

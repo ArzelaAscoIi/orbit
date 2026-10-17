@@ -1,0 +1,16 @@
+name: Idea
+description: Something Orbit should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What gets in your way today, in your own workflow.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like
+      description: Generic for every team, or something for your profile? Profile-only ideas usually belong in your fork.

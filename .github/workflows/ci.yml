@@ -1,0 +1,61 @@
+# The tests, on every push to main and every pull request: `make check`
+# (fmt, clippy with warnings as errors, the tests), the same as before a
+# commit, one step each so a red run says which. macOS, like the app: some
+# dependencies are macOS only. Third-party actions are pinned by SHA.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to a PR replaces its run still going; on main every commit
+# gets its run, one after the other, so none goes unchecked.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: fmt, clippy, tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust
+        # The version and components rust-toolchain.toml pins.
+        run: rustup toolchain install
+
+      # The dependencies take most of the build; kept between runs.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Format
+        run: make fmt-check
+
+      - name: Clippy
+        run: make lint
+
+      - name: Tests
+        run: make test
+
+  # Known vulnerabilities in Cargo.lock (RustSec). Unmaintained crates are
+  # warnings, not failures. Only the lockfile is read: Linux is enough.
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit

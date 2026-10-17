@@ -1,0 +1,2 @@
+aliases:
+  workers: pod app.kubernetes.io/component=worker

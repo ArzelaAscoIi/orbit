@@ -1,0 +1,66 @@
+{
+  "name": "acme",
+  "company": {
+    "name": "Acme",
+    "product": "Acme's analytics platform",
+    "internalPrefixes": ["acme-"]
+  },
+  "attribution": {"name": "orbit", "email": "orbit@acme.example"},
+  "bot": {
+    "name": "Robo",
+    "planCommand": "@Robo Plan!",
+    "buildCommand": "@Robo Build!",
+    "investigateCommand": "@Robo Investigate!",
+    "pollerWorkflow": "acme/robo:poller.yml",
+    "reviewCap": 5
+  },
+  "github": {
+    "org": "acme",
+    "botLogin": "acme-bot[bot]",
+    "aiReview": {"comment": "/ai-review"},
+    "reviewRoulette": "review-roulette",
+    "preview": {
+      "labels": [
+        {"label": "preview-ui", "button": "Preview UI", "hint": "the PR's UI, against the dev API"},
+        {"label": "preview-full", "button": "Preview full", "hint": "the PR's API and UI together"}
+      ],
+      "repos": ["web"],
+      "ready": "Deployed preview environment to"
+    }
+  },
+  "linear": {
+    "oauthClientId": "acme-oauth-client",
+    "noteUrl": "https://github.com/acme/orbit-notes"
+  },
+  "intake": {
+    "routing": "WEB is the web app, dashboards, login; API is the public API, SDK and CLI; OPS is CI/CD, releases and incidents",
+    "defaultTeam": "WEB"
+  },
+  "ktlo": {
+    "securityCreators": ["Scanner"],
+    "securityLabels": ["security"],
+    "securityTitles": [" cve:", "cve-"],
+    "alertLabels": ["ktlo", "prod alerts"],
+    "sweeps": [
+      {"prefix": "[job-error]", "story": "Job errors", "alert": true},
+      {"prefix": "[job error]", "story": "Job errors", "alert": true},
+      {"prefix": "[prod]", "story": "Prod alerts", "alert": true},
+      {"prefix": "[ux stuck]", "story": "UX friction", "alert": false, "investigate": true},
+      {"prefix": "[reports feature]", "story": "Reports feature", "alert": false}
+    ],
+    "label": "KTLO"
+  },
+  "spotter": {"tools": ["mcp__metrics__search_logs"]},
+  "settings": {
+    "testAppUrl": "https://dev.acme.example",
+    "debug": [{"name": "prod", "setup": "login prod", "panes": ["k9s", "claude"]}]
+  },
+  "people": {
+    "sam@acme.example": {
+      "orchestrator": {"team": "OPS", "allow": ["mcp__metrics"]},
+      "style": "Short, the point first."
+    }
+  },
+  "rules": "Changes go to dev before prod.",
+  "skills": {"debugAlert": "debug-alert"}
+}

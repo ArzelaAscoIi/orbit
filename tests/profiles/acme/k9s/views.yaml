@@ -1,0 +1,5 @@
+views:
+  workers:
+    columns:
+      - NAME
+      - STATE:.metadata.labels.acme\.example/state

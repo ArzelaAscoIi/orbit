@@ -1,0 +1,84 @@
+diff --git a/src/reports/export.ts b/src/reports/export.ts
+index 3f2a1c4..8b9d0e7 100644
+--- a/src/reports/export.ts
++++ b/src/reports/export.ts
+@@ -1,28 +1,37 @@
+ import { Response } from "express";
+-import { fetchRows } from "./rows";
++import { rowCursor } from "./rows";
+ import { toCsvLine } from "./csv";
+ 
+-const PAGE_SIZE = 10_000;
++const PAGE_SIZE = 2_000;
+ 
+ /**
+  * Sends a report as CSV.
+- * Loads the rows, then writes them in one go.
++ * Streams the rows page by page, so a large report never sits in memory
++ * and no row is left out.
+  */
+ export async function exportCsv(reportId: string, res: Response) {
+-  const rows = await fetchRows(reportId, { limit: PAGE_SIZE });
+   res.setHeader("Content-Type", "text/csv");
+   res.setHeader("Content-Disposition", `attachment; filename="${reportId}.csv"`);
+-  res.write(toCsvLine(rows.columns));
+-  for (const row of rows.items) {
+-    res.write(toCsvLine(row));
++
++  const cursor = rowCursor(reportId, { pageSize: PAGE_SIZE });
++  let header = false;
++  for await (const page of cursor) {
++    if (!header) {
++      res.write(toCsvLine(page.columns));
++      header = true;
++    }
++    for (const row of page.items) {
++      if (!res.write(toCsvLine(row))) {
++        await new Promise((resolve) => res.once("drain", resolve));
++      }
++    }
+   }
+   res.end();
+ }
+diff --git a/src/reports/rows.ts b/src/reports/rows.ts
+index 91c0d2a..4e7b113 100644
+--- a/src/reports/rows.ts
++++ b/src/reports/rows.ts
+@@ -12,10 +12,24 @@ export interface Page {
+   next?: string;
+ }
+ 
+-export async function fetchRows(reportId: string, opts: { limit: number }): Promise<Page> {
+-  return query(reportId, { limit: opts.limit });
++/** Every page of a report, in order, until the last one. */
++export async function* rowCursor(
++  reportId: string,
++  opts: { pageSize: number },
++): AsyncGenerator<Page> {
++  let after: string | undefined;
++  do {
++    const page = await query(reportId, { limit: opts.pageSize, after });
++    yield page;
++    after = page.next;
++  } while (after);
+ }
+diff --git a/src/reports/export.test.ts b/src/reports/export.test.ts
+index 5d1e2f0..c3a9b84 100644
+--- a/src/reports/export.test.ts
++++ b/src/reports/export.test.ts
+@@ -20,4 +20,15 @@ describe("exportCsv", () => {
+     expect(lines(res)).toHaveLength(3);
+   });
++
++  it("exports every row of a large report", async () => {
++    const report = await seedReport({ rows: 25_000 });
++    const res = fakeResponse();
++    await exportCsv(report.id, res);
++    expect(lines(res)).toHaveLength(25_001);
++  });
++
++  it("writes the header once", async () => {
++    const res = await exportOf(seedReport({ rows: 4_500 }));
++    expect(lines(res).filter((l) => l.startsWith("id,"))).toHaveLength(1);
++  });
+ });

@@ -1,0 +1,1 @@
+["shot 01-start", "show stories", "select 1", "shot 02-story-ticket", "tab diff", "wait 4", "shot 03-diff", "note Login button does nothing on Safari since yesterday", "shot 04-new-ticket", "do CloseCapture", "palette plan", "shot 05-palette", "do TogglePalette", "show settings", "shot 06-settings"]

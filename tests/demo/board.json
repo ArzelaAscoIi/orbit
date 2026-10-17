@@ -1,0 +1,1336 @@
+{
+ "issues": [
+  {
+   "id": "id-web-142",
+   "identifier": "WEB-142",
+   "title": "CSV export drops rows past 10,000",
+   "url": "https://linear.app/acme/issue/WEB-142",
+   "description": "Exporting a report with more than 10,000 rows silently cuts the file at 10,000. Northwind exports monthly usage and noticed the totals do not match the dashboard.\n\n**Expected:** the CSV has every row, however many.",
+   "updatedAt": "@-95",
+   "createdAt": "@-4300",
+   "priority": 2,
+   "state": {
+    "id": "team-web-review",
+    "name": "In Review",
+    "color": "#0f783c",
+    "position": 5,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": [
+     {
+      "url": "https://github.com/acme/web/pull/318",
+      "title": "acme/web#318",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "web",
+       "number": 318,
+       "status": "open",
+       "createdAt": "@-95",
+       "mergedAt": null,
+       "reviews": []
+      }
+     }
+    ]
+   },
+   "needs": {
+    "nodes": [
+     {
+      "customer": {
+       "name": "Northwind"
+      }
+     }
+    ]
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Bug"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c1",
+      "body": "🤖 Routed to **Web**: the export runs in the web app's report service.",
+      "createdAt": "@-4200",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c2",
+      "body": "🤖 Here's my implementation plan\n\nStream the export page by page instead of loading one 10,000 row page.\n\n1. Read rows with the report cursor until it runs out.\n2. Write each page to the response as it arrives, so memory stays flat.\n3. Add a test with 25,000 rows.",
+      "createdAt": "@-4100",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c3",
+      "body": "🤖 Dispatched Build",
+      "createdAt": "@-3000",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c4",
+      "body": "🤖 PR opened → https://github.com/acme/web/pull/318 (acme/web): streams CSV exports page by page; CI is green.",
+      "createdAt": "@-95",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-api-88",
+   "identifier": "API-88",
+   "title": "SSO: map Okta groups to workspace roles",
+   "url": "https://linear.app/acme/issue/API-88",
+   "description": "Customers on Okta want their groups to decide who is an admin, an editor or a viewer, instead of inviting everyone by hand.",
+   "updatedAt": "@-180",
+   "createdAt": "@-9000",
+   "priority": 2,
+   "state": {
+    "id": "team-api-blocked",
+    "name": "Blocked",
+    "color": "#eb5757",
+    "position": 4,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": [
+     {
+      "customer": {
+       "name": "Globex"
+      }
+     },
+     {
+      "customer": {
+       "name": "Initech"
+      }
+     }
+    ]
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Feature"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c5",
+      "body": "🤖 Here's my implementation plan\n\nRead the groups claim at login and map it to roles through a per-workspace table.\n\n1. Add a group to role table per workspace.\n2. Apply it on every SSO login.\n3. Show the mapping in Settings, SSO.",
+      "createdAt": "@-8000",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c6",
+      "body": "🤖 Routed to **Blocked** — Okta sends nested groups. Should a member of a nested group get the parent group's role (flatten), or only the roles of groups they are directly in? Flattening is what most customers expect, but it can grant admin by accident.",
+      "createdAt": "@-180",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-api-91",
+   "identifier": "API-91",
+   "title": "API returns 500 for a dashboard with no widgets",
+   "url": "https://linear.app/acme/issue/API-91",
+   "description": "GET /v1/dashboards/{id} fails with a 500 when the dashboard is empty. The web app shows a blank page.",
+   "updatedAt": "@-400",
+   "createdAt": "@-6000",
+   "priority": 2,
+   "state": {
+    "id": "team-api-testing",
+    "name": "Testing",
+    "color": "#5e6ad2",
+    "position": 6,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": [
+     {
+      "url": "https://github.com/acme/api/pull/207",
+      "title": "acme/api#207",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "api",
+       "number": 207,
+       "status": "merged",
+       "createdAt": "@-5000",
+       "mergedAt": "@-2500",
+       "reviews": [
+        {
+         "state": "approved",
+         "isBot": false
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Bug"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c7",
+      "body": "🤖 Here's my implementation plan\n\nReturn an empty widget list instead of reading the first widget.\n\n1. Guard the empty case in the dashboard serializer.\n2. Add a test for an empty dashboard.",
+      "createdAt": "@-5800",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c8",
+      "body": "🤖 Dispatched Build",
+      "createdAt": "@-5500",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c9",
+      "body": "🤖 PR opened → https://github.com/acme/api/pull/207 (acme/api): empty dashboards return 200 with no widgets.",
+      "createdAt": "@-5000",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c10",
+      "body": "Approved and merged, thanks.",
+      "createdAt": "@-400",
+      "user": {
+       "name": "Alex Kim"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-web-150",
+   "identifier": "WEB-150",
+   "title": "Dark mode for embedded dashboards",
+   "url": "https://linear.app/acme/issue/WEB-150",
+   "description": "Dashboards embedded in customer apps should follow the host page's color scheme.",
+   "updatedAt": "@-40",
+   "createdAt": "@-7000",
+   "priority": 3,
+   "state": {
+    "id": "team-web-progress",
+    "name": "In Progress",
+    "color": "#f2c94c",
+    "position": 3,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": [
+     {
+      "customer": {
+       "name": "Umbrella"
+      }
+     }
+    ]
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c11",
+      "body": "🤖 Here's my implementation plan\n\nPass the host's color scheme through the embed URL and theme the charts with it.\n\n1. Read `theme=dark|light|auto` from the embed URL.\n2. Map it to the chart palette.",
+      "createdAt": "@-6500",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c12",
+      "body": "🤖 Dispatched Build",
+      "createdAt": "@-40",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-api-95",
+   "identifier": "API-95",
+   "title": "Rate limit the public query API per workspace",
+   "url": "https://linear.app/acme/issue/API-95",
+   "description": "One workspace's scheduled reports can slow the query API for everyone. Limit queries per workspace.",
+   "updatedAt": "@-2500",
+   "createdAt": "@-3000",
+   "priority": 2,
+   "state": {
+    "id": "team-api-todo",
+    "name": "Todo",
+    "color": "#e2e2e2",
+    "position": 2,
+    "type": "unstarted"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c13",
+      "body": "🤖 Here's my implementation plan\n\nA token bucket per workspace in Redis, 20 queries per second with bursts of 50.\n\n1. Add the limiter as middleware on /v1/query.\n2. Return 429 with Retry-After.\n3. Make the limit a workspace setting.",
+      "createdAt": "@-2500",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-web-155",
+   "identifier": "WEB-155",
+   "title": "Share a dashboard with a read-only link",
+   "url": "https://linear.app/acme/issue/WEB-155",
+   "description": "Let people share a dashboard with someone outside the workspace, read only, revocable.",
+   "updatedAt": "@-2000",
+   "createdAt": "@-2000",
+   "priority": 3,
+   "state": {
+    "id": "team-web-todo",
+    "name": "Todo",
+    "color": "#e2e2e2",
+    "position": 2,
+    "type": "unstarted"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": [
+     {
+      "customer": {
+       "name": "Globex"
+      }
+     }
+    ]
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-api-97",
+   "identifier": "API-97",
+   "title": "Slow /reports endpoint for large workspaces",
+   "url": "https://linear.app/acme/issue/API-97",
+   "description": "/v1/reports takes 8 seconds for workspaces with 500+ reports.",
+   "updatedAt": "@-300",
+   "createdAt": "@-4000",
+   "priority": 3,
+   "state": {
+    "id": "team-api-review",
+    "name": "In Review",
+    "color": "#0f783c",
+    "position": 5,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": {
+    "name": "Alex Kim"
+   },
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": [
+     {
+      "url": "https://github.com/acme/api/pull/211",
+      "title": "acme/api#211",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "api",
+       "number": 211,
+       "status": "open",
+       "createdAt": "@-300",
+       "mergedAt": null,
+       "reviews": []
+      }
+     }
+    ]
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c14",
+      "body": "Adding an index on (workspace_id, updated_at) and paginating. PR is up.",
+      "createdAt": "@-300",
+      "user": {
+       "name": "Alex Kim"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-web-158",
+   "identifier": "WEB-158",
+   "title": "Chart tooltips are cut off on small screens",
+   "url": "https://linear.app/acme/issue/WEB-158",
+   "description": "On a 13 inch laptop the tooltip of the rightmost bar goes off screen.",
+   "updatedAt": "@-50",
+   "createdAt": "@-50",
+   "priority": 0,
+   "state": {
+    "id": "team-web-triage",
+    "name": "Triage",
+    "color": "#FC7840",
+    "position": 0,
+    "type": "triage"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-api-99",
+   "identifier": "API-99",
+   "title": "Webhook retries send duplicate events",
+   "url": "https://linear.app/acme/issue/API-99",
+   "description": "When our endpoint is slow, the same event arrives two or three times.",
+   "updatedAt": "@-120",
+   "createdAt": "@-120",
+   "priority": 0,
+   "state": {
+    "id": "team-api-triage",
+    "name": "Triage",
+    "color": "#FC7840",
+    "position": 0,
+    "type": "triage"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Priya Shah"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": [
+     {
+      "customer": {
+       "name": "Initech"
+      }
+     }
+    ]
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-web-160",
+   "identifier": "WEB-160",
+   "title": "Pin a dashboard to the sidebar",
+   "url": "https://linear.app/acme/issue/WEB-160",
+   "description": "Let people pin the dashboards they open every day to the top of the sidebar.",
+   "updatedAt": "@-6",
+   "createdAt": "@-1500",
+   "priority": 3,
+   "state": {
+    "id": "team-web-progress",
+    "name": "In Progress",
+    "color": "#f2c94c",
+    "position": 3,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": {
+    "name": "Sam Lee"
+   },
+   "creator": {
+    "name": "Sam Lee"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-api-101",
+   "identifier": "API-101",
+   "title": "CVE-2026-31337: jsonwebtoken 9.2 accepts unsigned tokens",
+   "url": "https://linear.app/acme/issue/API-101",
+   "description": "Dependency scan: jsonwebtoken 9.2.0 in acme/api. Upgrade to 9.3.1.",
+   "updatedAt": "@-150",
+   "createdAt": "@-200",
+   "priority": 1,
+   "state": {
+    "id": "team-api-todo",
+    "name": "Todo",
+    "color": "#e2e2e2",
+    "position": 2,
+    "type": "unstarted"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Scanner"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Security"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c15",
+      "body": "🤖 Here's my implementation plan\n\nBump jsonwebtoken to 9.3.1 and run the auth tests.\n\n1. Upgrade the dependency.\n2. Run the auth test suite.",
+      "createdAt": "@-150",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-web-140",
+   "identifier": "WEB-140",
+   "title": "Onboarding checklist for new workspaces",
+   "url": "https://linear.app/acme/issue/WEB-140",
+   "description": "A short checklist on the first visit: connect data, build a dashboard, invite a teammate.",
+   "updatedAt": "@-15000",
+   "createdAt": "@-20000",
+   "priority": 3,
+   "state": {
+    "id": "team-web-done",
+    "name": "Done",
+    "color": "#5e6ad2",
+    "position": 7,
+    "type": "completed"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": [
+     {
+      "url": "https://github.com/acme/web/pull/290",
+      "title": "acme/web#290",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "web",
+       "number": 290,
+       "status": "merged",
+       "createdAt": "@-15000",
+       "mergedAt": "@-7500",
+       "reviews": [
+        {
+         "state": "approved",
+         "isBot": false
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c16",
+      "body": "🤖 PR opened → https://github.com/acme/web/pull/290 (acme/web): the checklist.",
+      "createdAt": "@-15000",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-api-80",
+   "identifier": "API-80",
+   "title": "Export the audit log to S3",
+   "url": "https://linear.app/acme/issue/API-80",
+   "description": "Nightly export of the audit log to the customer's bucket.",
+   "updatedAt": "@-30000",
+   "createdAt": "@-30000",
+   "priority": 3,
+   "state": {
+    "id": "team-api-done",
+    "name": "Done",
+    "color": "#5e6ad2",
+    "position": 7,
+    "type": "completed"
+   },
+   "team": {
+    "id": "team-api"
+   },
+   "assignee": {
+    "name": "Alex Kim"
+   },
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": []
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-web-171",
+   "identifier": "WEB-171",
+   "title": "Saved views: store filters per user",
+   "url": "https://linear.app/acme/issue/WEB-171",
+   "description": "Save the current filter set of a dashboard as a named view, per user.",
+   "updatedAt": "@-25",
+   "createdAt": "@-70",
+   "priority": 3,
+   "state": {
+    "id": "team-web-review",
+    "name": "In Review",
+    "color": "#0f783c",
+    "position": 5,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Sam Lee"
+   },
+   "parent": {
+    "id": "id-web-170",
+    "identifier": "WEB-170",
+    "title": "Saved views on dashboards",
+    "url": "https://linear.app/acme/issue/WEB-170"
+   },
+   "project": null,
+   "attachments": {
+    "nodes": [
+     {
+      "url": "https://github.com/acme/web/pull/322",
+      "title": "acme/web#322",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "web",
+       "number": 322,
+       "status": "open",
+       "createdAt": "@-25",
+       "mergedAt": null,
+       "reviews": []
+      }
+     }
+    ]
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Feature"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c101",
+      "body": "🤖 Here's my implementation plan\n\nA saved_views table keyed by user and dashboard, and an API to list, save and delete views.",
+      "createdAt": "@-65",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c102",
+      "body": "🤖 Dispatched Build",
+      "createdAt": "@-60",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c103",
+      "body": "🤖 PR opened → https://github.com/acme/web/pull/322 (acme/web): saved views are stored per user; CI is green.",
+      "createdAt": "@-25",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-web-172",
+   "identifier": "WEB-172",
+   "title": "Saved views: pick a default view",
+   "url": "https://linear.app/acme/issue/WEB-172",
+   "description": "A view can be the dashboard's default for its user.",
+   "updatedAt": "@-12",
+   "createdAt": "@-69",
+   "priority": 3,
+   "state": {
+    "id": "team-web-progress",
+    "name": "In Progress",
+    "color": "#f2c94c",
+    "position": 3,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Sam Lee"
+   },
+   "parent": {
+    "id": "id-web-170",
+    "identifier": "WEB-170",
+    "title": "Saved views on dashboards",
+    "url": "https://linear.app/acme/issue/WEB-170"
+   },
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Feature"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c104",
+      "body": "🤖 Here's my implementation plan\n\nA default flag on saved views, applied when the dashboard opens.",
+      "createdAt": "@-40",
+      "user": {
+       "name": "Robo"
+      }
+     },
+     {
+      "id": "c105",
+      "body": "🤖 Dispatched Build",
+      "createdAt": "@-12",
+      "user": {
+       "name": "Robo"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "id-web-173",
+   "identifier": "WEB-173",
+   "title": "Saved views: share a view by link",
+   "url": "https://linear.app/acme/issue/WEB-173",
+   "description": "A link that opens the dashboard with the view's filters.",
+   "updatedAt": "@-68",
+   "createdAt": "@-68",
+   "priority": 3,
+   "state": {
+    "id": "team-web-backlog",
+    "name": "Backlog",
+    "color": "#bec2c8",
+    "position": 1,
+    "type": "backlog"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Sam Lee"
+   },
+   "parent": {
+    "id": "id-web-170",
+    "identifier": "WEB-170",
+    "title": "Saved views on dashboards",
+    "url": "https://linear.app/acme/issue/WEB-170"
+   },
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Feature"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-web-174",
+   "identifier": "WEB-174",
+   "title": "Saved views: the views menu",
+   "url": "https://linear.app/acme/issue/WEB-174",
+   "description": "A menu on the dashboard header to switch, rename and delete views.",
+   "updatedAt": "@-67",
+   "createdAt": "@-67",
+   "priority": 3,
+   "state": {
+    "id": "team-web-backlog",
+    "name": "Backlog",
+    "color": "#bec2c8",
+    "position": 1,
+    "type": "backlog"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": null,
+   "creator": {
+    "name": "Sam Lee"
+   },
+   "parent": {
+    "id": "id-web-170",
+    "identifier": "WEB-170",
+    "title": "Saved views on dashboards",
+    "url": "https://linear.app/acme/issue/WEB-170"
+   },
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Feature"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": []
+   }
+  },
+  {
+   "id": "id-web-170",
+   "identifier": "WEB-170",
+   "title": "Saved views on dashboards",
+   "url": "https://linear.app/acme/issue/WEB-170",
+   "description": "Per-user saved filters, shareable links and a default view. Robo builds, Sam reviews.",
+   "updatedAt": "@-12",
+   "createdAt": "@-71",
+   "priority": 2,
+   "state": {
+    "id": "team-web-progress",
+    "name": "In Progress",
+    "color": "#f2c94c",
+    "position": 3,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": {
+    "name": "Sam Lee"
+   },
+   "creator": {
+    "name": "Sam Lee"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": []
+   },
+   "needs": {
+    "nodes": [
+     {
+      "customer": {
+       "name": "Globex"
+      }
+     }
+    ]
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Feature"
+     }
+    ]
+   },
+   "children": {
+    "nodes": [
+     {
+      "identifier": "WEB-171",
+      "previousIdentifiers": [],
+      "title": "Saved views: store filters per user",
+      "url": "https://linear.app/acme/issue/WEB-171",
+      "createdAt": "@-70",
+      "state": {
+       "name": "In Review",
+       "type": "started"
+      },
+      "assignee": null,
+      "team": {
+       "key": "WEB"
+      },
+      "relations": {
+       "nodes": [
+        {
+         "type": "blocks",
+         "relatedIssue": {
+          "identifier": "WEB-173"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "identifier": "WEB-172",
+      "previousIdentifiers": [],
+      "title": "Saved views: pick a default view",
+      "url": "https://linear.app/acme/issue/WEB-172",
+      "createdAt": "@-69",
+      "state": {
+       "name": "In Progress",
+       "type": "started"
+      },
+      "assignee": null,
+      "team": {
+       "key": "WEB"
+      },
+      "relations": {
+       "nodes": []
+      }
+     },
+     {
+      "identifier": "WEB-173",
+      "previousIdentifiers": [],
+      "title": "Saved views: share a view by link",
+      "url": "https://linear.app/acme/issue/WEB-173",
+      "createdAt": "@-68",
+      "state": {
+       "name": "Backlog",
+       "type": "backlog"
+      },
+      "assignee": null,
+      "team": {
+       "key": "WEB"
+      },
+      "relations": {
+       "nodes": []
+      }
+     },
+     {
+      "identifier": "WEB-174",
+      "previousIdentifiers": [],
+      "title": "Saved views: the views menu",
+      "url": "https://linear.app/acme/issue/WEB-174",
+      "createdAt": "@-67",
+      "state": {
+       "name": "Backlog",
+       "type": "backlog"
+      },
+      "assignee": null,
+      "team": {
+       "key": "WEB"
+      },
+      "relations": {
+       "nodes": []
+      }
+     }
+    ]
+   },
+   "comments": {
+    "nodes": []
+   }
+  }
+ ],
+ "teams": [
+  {
+   "id": "team-web",
+   "key": "WEB",
+   "name": "Web",
+   "states": {
+    "nodes": [
+     {
+      "id": "team-web-triage",
+      "name": "Triage",
+      "color": "#FC7840",
+      "position": 0,
+      "type": "triage"
+     },
+     {
+      "id": "team-web-backlog",
+      "name": "Backlog",
+      "color": "#bec2c8",
+      "position": 1,
+      "type": "backlog"
+     },
+     {
+      "id": "team-web-todo",
+      "name": "Todo",
+      "color": "#e2e2e2",
+      "position": 2,
+      "type": "unstarted"
+     },
+     {
+      "id": "team-web-progress",
+      "name": "In Progress",
+      "color": "#f2c94c",
+      "position": 3,
+      "type": "started"
+     },
+     {
+      "id": "team-web-blocked",
+      "name": "Blocked",
+      "color": "#eb5757",
+      "position": 4,
+      "type": "started"
+     },
+     {
+      "id": "team-web-review",
+      "name": "In Review",
+      "color": "#0f783c",
+      "position": 5,
+      "type": "started"
+     },
+     {
+      "id": "team-web-testing",
+      "name": "Testing",
+      "color": "#5e6ad2",
+      "position": 6,
+      "type": "started"
+     },
+     {
+      "id": "team-web-done",
+      "name": "Done",
+      "color": "#5e6ad2",
+      "position": 7,
+      "type": "completed"
+     },
+     {
+      "id": "team-web-canceled",
+      "name": "Canceled",
+      "color": "#95a2b3",
+      "position": 8,
+      "type": "canceled"
+     }
+    ]
+   }
+  },
+  {
+   "id": "team-api",
+   "key": "API",
+   "name": "API",
+   "states": {
+    "nodes": [
+     {
+      "id": "team-api-triage",
+      "name": "Triage",
+      "color": "#FC7840",
+      "position": 0,
+      "type": "triage"
+     },
+     {
+      "id": "team-api-backlog",
+      "name": "Backlog",
+      "color": "#bec2c8",
+      "position": 1,
+      "type": "backlog"
+     },
+     {
+      "id": "team-api-todo",
+      "name": "Todo",
+      "color": "#e2e2e2",
+      "position": 2,
+      "type": "unstarted"
+     },
+     {
+      "id": "team-api-progress",
+      "name": "In Progress",
+      "color": "#f2c94c",
+      "position": 3,
+      "type": "started"
+     },
+     {
+      "id": "team-api-blocked",
+      "name": "Blocked",
+      "color": "#eb5757",
+      "position": 4,
+      "type": "started"
+     },
+     {
+      "id": "team-api-review",
+      "name": "In Review",
+      "color": "#0f783c",
+      "position": 5,
+      "type": "started"
+     },
+     {
+      "id": "team-api-testing",
+      "name": "Testing",
+      "color": "#5e6ad2",
+      "position": 6,
+      "type": "started"
+     },
+     {
+      "id": "team-api-done",
+      "name": "Done",
+      "color": "#5e6ad2",
+      "position": 7,
+      "type": "completed"
+     },
+     {
+      "id": "team-api-canceled",
+      "name": "Canceled",
+      "color": "#95a2b3",
+      "position": 8,
+      "type": "canceled"
+     }
+    ]
+   }
+  }
+ ]
+}

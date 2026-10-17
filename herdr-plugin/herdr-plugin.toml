@@ -1,0 +1,44 @@
+# Orbit inside herdr: what needs you, in a popup, and Linear or GitHub links
+# clicked in a pane opening in Orbit. Linked by Orbit's Settings (herdr
+# section, "Add the plugin"), or by hand: herdr plugin link <this folder>.
+id = "orbit"
+name = "Orbit"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "What needs you from Orbit, and Linear and GitHub links opened in Orbit"
+platforms = ["macos"]
+
+[[panes]]
+id = "needs"
+title = "Orbit: needs you"
+placement = "popup"
+command = ["sh", "orbit.sh", "needs", "--watch"]
+
+[[actions]]
+id = "needs"
+title = "Orbit: what needs you"
+contexts = ["workspace"]
+command = ["sh", "orbit.sh", "pane", "needs"]
+
+[[actions]]
+id = "open"
+title = "Open in Orbit"
+command = ["sh", "orbit.sh", "open-clicked"]
+
+[[actions]]
+id = "show"
+title = "Bring Orbit to the front"
+contexts = ["workspace"]
+command = ["open", "-a", "Orbit"]
+
+[[link_handlers]]
+id = "linear"
+title = "Open the ticket in Orbit"
+pattern = "^https://linear\\.app/[^/]+/issue/[A-Za-z]+-[0-9]+"
+action = "open"
+
+[[link_handlers]]
+id = "github-pr"
+title = "Open the PR in Orbit"
+pattern = "^https://github\\.com/[^/]+/[^/]+/pull/[0-9]+"
+action = "open"

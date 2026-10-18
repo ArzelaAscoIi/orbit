@@ -19,7 +19,12 @@ paths=${OVERLAY_PATHS:-profiles overlay.mk}
 deny=${UPSTREAM_DENY:-}
 
 # The remote that points at upstream, whatever this clone calls it.
-remote=$(git remote -v | awk -v r="$repo" '$3 == "(fetch)" && index($2, r) { print $1; exit }')
+# Exact repo only: owner/repo must not also match owner/repo-private.
+remote=$(git remote -v | awk -v r="$repo" '$3 == "(fetch)" {
+  u = $2; sub(/\.git$/, "", u); sub(/\/$/, "", u)
+  n = length(u) - length(r)
+  if (n > 0 && substr(u, n + 1) == r && substr(u, n, 1) ~ /[:\/]/) { print $1; exit }
+}')
 if [ -z "$remote" ]; then
   remote=upstream
   git remote add "$remote" "https://github.com/$repo.git"

@@ -129,7 +129,7 @@ step. **[docs/cloud-agents.md](docs/cloud-agents.md)**
 
 ## Roadmap?
 
-There is none. Orbit works very well today, and anything you are missing is a
+There is none. Orbit works well today, and anything you are missing is a
 prompt away in your fork. Why plan features for months when you can have them
 now?
 
@@ -140,8 +140,10 @@ What we do have is a direction: agents that need less of you, in three steps.
 2. **Make them autonomous, and orchestrate many of them.** Here today. The
    clone drives a goal of many tickets, and Run the board works your backlog
    unattended. You still approve and merge.
-3. **Make them know what you want.** Not there yet. This is the open problem,
-   and the interesting one.
+3. **Make them know what you want.** Not there yet. Agents that learn your
+   context and get richer with every day you work with them. How we get there?
+   We'll see, but [Merkwerk](https://github.com/ArzelaAscoIi/merkwerk) is part
+   of it.
 
 ## Install
 

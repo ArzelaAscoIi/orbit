@@ -52,8 +52,12 @@ acme
 make sync     # merge upstream's main into this branch, then make check
 ```
 
-Then push the branch and merge it in the fork like any PR. Upstream's
-changes never touch the overlay, so this is a fast, clean merge.
+Then push the branch and merge it in the fork. Upstream's changes never
+touch the overlay, so this is a fast, clean merge. Merge sync PRs with
+**Create a merge commit**, never squash: a squash drops the link to
+upstream's history, and the next sync fails with "unrelated histories"
+(fix: `git merge -s ours --allow-unrelated-histories <the upstream commit
+the fork already matches>`, then sync again).
 
 To have it happen on its own, put this workflow in the fork (it is part of
 the overlay, upstream does not have it). Every Monday it merges upstream
@@ -87,7 +91,7 @@ jobs:
           git merge --no-edit upstream/main
           git push -f origin sync/upstream
           gh pr view sync/upstream >/dev/null 2>&1 \
-            || gh pr create --head sync/upstream --title "Sync upstream" --body "Merges $UPSTREAM main."
+            || gh pr create --head sync/upstream --title "Sync upstream" --body "Merges $UPSTREAM main. Merge with a merge commit, never squash."
 ```
 
 A merge conflict fails the run: someone edited generic code in the fork.

@@ -754,6 +754,17 @@ fn about(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
     if link(ui, label("releases: download the latest zip").underline()).clicked() {
         actions.push(Action::Open(crate::RELEASES.into()));
     }
+    // Old session folders are cleaned up on their own (cleanup.rs); one
+    // quiet line says how much.
+    let note = app
+        .cleanup_note
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone();
+    if let Some(note) = note {
+        ui.add_space(4.0);
+        ui.label(label(&note));
+    }
 }
 
 /// A radio square, the name, and five swatches: bg, line-2, text, signal, btn.

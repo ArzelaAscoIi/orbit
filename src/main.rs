@@ -62,6 +62,7 @@ mod backend;
 mod browser;
 mod capture;
 mod claude;
+mod cleanup;
 mod control;
 mod demo;
 mod editor;
@@ -164,6 +165,38 @@ fn main() -> eframe::Result {
         && flag == "--skill"
     {
         print!("{}", skills::ORBIT);
+        return Ok(());
+    }
+    // `orbit cleanup [--dry-run]`: one cleanup pass (cleanup.rs) from a
+    // shell, without the board's done tickets. No window.
+    if let [_, cmd, rest @ ..] = args.as_slice()
+        && cmd == "cleanup"
+    {
+        let dry = rest.iter().any(|a| a == "--dry-run");
+        let facts = cleanup::Facts {
+            busy: cleanup::busy(),
+            done: Default::default(),
+        };
+        let data = store::data_dir();
+        let (steps, freed) = cleanup::run(&data, &facts, dry);
+        for step in &steps {
+            println!(
+                "{:<8} {:>9}  {}",
+                format!("{:?}", step.kind).to_lowercase(),
+                cleanup::gb(step.bytes),
+                step.path.display()
+            );
+        }
+        let total: u64 = steps.iter().map(|s| s.bytes).sum();
+        if dry {
+            println!(
+                "{} steps, {} would be freed (dry run: nothing deleted)",
+                steps.len(),
+                cleanup::gb(total)
+            );
+        } else {
+            println!("{} steps, {} freed", steps.len(), cleanup::gb(freed));
+        }
         return Ok(());
     }
     // `orbit worktree <repos> <owner/repo> <branch>`: a ticket

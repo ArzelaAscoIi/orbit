@@ -127,6 +127,24 @@ bot in the cloud that plans and builds from Linear comments, Orbit follows it.
 You see its plan on the ticket and its PR on the rail, and a ▼ hands it the next
 step. **[docs/cloud-agents.md](docs/cloud-agents.md)**
 
+## Roadmap?
+
+There is none. Orbit works well today, and anything you are missing is a
+prompt away in your fork. Why plan features for months when you can have them
+now?
+
+What we do have is a direction: agents that need less of you, in three steps.
+
+1. **Make coding agents do what you want.** Done. Every ticket gets its own
+   agent, briefed with the ticket and your team's skills, in its own worktree.
+2. **Make them autonomous, and orchestrate many of them.** Here today. The
+   clone drives a goal of many tickets, and Run the board works your backlog
+   unattended. You still approve and merge.
+3. **Make them know what you want.** Not there yet. Agents that learn your
+   context and get richer with every day you work with them. How we get there?
+   We'll see, but [Merkwerk](https://github.com/ArzelaAscoIi/merkwerk) is part
+   of it.
+
 ## Install
 
 ```sh

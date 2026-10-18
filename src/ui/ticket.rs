@@ -1803,7 +1803,7 @@ fn step_button(
     if !started || remote.is_some() || unset {
         chevron_menu(ui, "Another way to do it", |ui| {
             if !started {
-                for choice in [crate::claude::Agent::Claude, crate::claude::Agent::Codex] {
+                for choice in crate::claude::Agent::offered() {
                     let text = format!("Here, with {}", choice.label());
                     let button = egui::Button::image_and_text(agent_icon(ui, choice), text);
                     if hover_hand(&ui.add(button)).clicked() {

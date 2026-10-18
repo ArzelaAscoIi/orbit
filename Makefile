@@ -36,8 +36,11 @@ fmt-check: ## the code is formatted
 lint: ## clippy, warnings are errors
 	cargo clippy --all-targets --release -- -D warnings
 
-test: ## the tests, incl. every product decision's guard
+test: ## the tests, incl. every product decision's guard (and the pi extension's, with node 23.6+)
 	cargo test --release
+	@if node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>23||(a==23&&b>=6)?0:1)' 2>/dev/null; \
+	then node --test --test-reporter=dot tests/pi-extension.test.mjs; \
+	else echo "skipped tests/pi-extension.test.mjs: needs node 23.6 or newer"; fi
 
 fix: ## format and apply clippy's suggestions
 	cargo fmt

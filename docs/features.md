@@ -83,6 +83,11 @@ It is your own Claude Code: your skills, plugins, MCP servers and settings come 
 the app adds its skills (triage, plan, build, fix-pr-comments, spot, orchestrate) and
 the profile's fine-tuning. With Codex picked in Settings, new sessions run in Codex's local
 daemon instead, in a native pane with Allow / Decline on each permission it asks for.
+With [pi](https://pi.dev) picked (offered once `pi` is on your PATH), a ticket gets an
+interactive `pi` in its own terminal and folder, resumed by its session id. Orbit's pi
+extension shows working, your turn and needs approval like Claude's, blocks what the
+session's rules refuse and asks in pi before anything else that is not allowed. Unattended
+runs (the board, the clone, Plan my day) stay on Claude Code.
 Cmd+click a link Claude prints: a Linear ticket or a PR opens
 right here, a PR on its Diff tab. Select to copy.
 

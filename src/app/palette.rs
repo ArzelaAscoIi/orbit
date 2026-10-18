@@ -112,21 +112,25 @@ pub fn items(app: &App) -> Vec<Item> {
                 vec![Action::Claude(id.clone())],
             )
         });
-        // The other agent, this once, while nothing has started yet.
+        // Another agent, this once, while nothing has started yet.
         if !started {
-            let other = agent.other();
-            out.push(Item {
-                also: "claude codex session",
-                ..item(
-                    "this ticket",
-                    &format!("Work with {} on {name}", other.short()),
-                    "",
-                    vec![Action::WithAgent(
-                        other,
-                        Box::new(Action::Claude(id.clone())),
-                    )],
-                )
-            });
+            for other in crate::claude::Agent::offered()
+                .into_iter()
+                .filter(|a| *a != agent)
+            {
+                out.push(Item {
+                    also: "claude codex pi session",
+                    ..item(
+                        "this ticket",
+                        &format!("Work with {} on {name}", other.short()),
+                        "",
+                        vec![Action::WithAgent(
+                            other,
+                            Box::new(Action::Claude(id.clone())),
+                        )],
+                    )
+                });
+            }
         }
         // Its Linear state, one line per state it could move to; once a PR
         // merged, never back to before where the ticket stands.

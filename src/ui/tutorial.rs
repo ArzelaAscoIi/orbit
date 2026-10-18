@@ -920,7 +920,8 @@ pub const STEPS: &[Step] = &[
         "Update Orbit",
         "Orbit looks for a newer release when it starts and every hour after. When there is \
          one, Update in Settings (or Update Orbit in Cmd+K) downloads it with your gh login, \
-         swaps it in and reopens the app. Sessions keep running across the restart.",
+         swaps it in and reopens the app. Sessions keep running across the restart. Below it, \
+         one line says how much disk Orbit uses: old session folders are cleaned up on their own.",
     ),
     step(
         Some("themes"),

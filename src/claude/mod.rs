@@ -1559,6 +1559,17 @@ fn fresh_note(had_saved: bool, resumable: bool) -> Option<String> {
         .then(|| "Started fresh: the saved session had no transcript to resume.".to_owned())
 }
 
+/// The folders running Claude sessions work in (cleanup.rs keeps them).
+/// Blocking: off the UI thread.
+pub fn running_cwds() -> Vec<PathBuf> {
+    agents::running()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|l| !l.cwd.is_empty())
+        .map(|l| PathBuf::from(l.cwd))
+        .collect()
+}
+
 fn start(spec: Spec, saved: Option<Saved>, work: &Path) -> Result<(Saved, Option<String>)> {
     // Asked fresh, not from the last poll: resuming a session that is
     // already running starts a second copy of it.

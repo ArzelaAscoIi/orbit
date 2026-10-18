@@ -928,6 +928,11 @@ pub struct App {
     pub herdr_bin: bool,
     pub herdr_agents: Vec<crate::herdr::Agent>,
     herdr_asked: Option<std::time::Instant>,
+    /// When the next cleanup pass runs (cleanup.rs): 2 minutes after
+    /// start, then daily, off the UI thread.
+    cleanup_due: std::time::Instant,
+    /// The last pass's line for Settings ("storage: … · freed … on …").
+    pub cleanup_note: std::sync::Arc<std::sync::Mutex<Option<String>>>,
     /// The PRs the user's Land click covers, by URL, with the head they saw
     /// (`Action::LandBatch`): queued again whenever GitHub says mergeable
     /// at that head, after a re-run or a drop from the merge queue.
@@ -1232,6 +1237,10 @@ impl App {
             herdr_bin: crate::herdr::bin().is_some(),
             herdr_agents: Vec::new(),
             herdr_asked: None,
+            cleanup_due: std::time::Instant::now() + std::time::Duration::from_secs(120),
+            cleanup_note: std::sync::Arc::new(std::sync::Mutex::new(crate::cleanup::note(
+                &crate::store::data_dir(),
+            ))),
             control: crate::control::serve(ctx.clone()),
             reviewers: HashMap::new(),
             missions: crate::mission::load(),
@@ -2202,6 +2211,38 @@ impl App {
     /// A session whose ticket or PR is done has nothing left for the user:
     /// its finished turn reads "done", not "your turn". Claude Code's rows
     /// come fresh on every poll, so this runs every tick.
+    /// Starts a cleanup pass when one is due (cleanup.rs), with the
+    /// board's done and canceled tickets; the files are read and deleted
+    /// on a thread of its own.
+    fn clean_up(&mut self) {
+        let now = std::time::Instant::now();
+        if self.settings.no_cleanup || now < self.cleanup_due || crate::read_only() {
+            return;
+        }
+        self.cleanup_due = now + std::time::Duration::from_secs(24 * 60 * 60);
+        let done = self
+            .cards
+            .iter()
+            .filter(|c| matches!(c.issue.state.kind.as_str(), "completed" | "canceled"))
+            .filter_map(|c| {
+                let at: jiff::Timestamp = c.issue.updated_at.parse().ok()?;
+                Some((c.issue.identifier.clone(), std::time::SystemTime::from(at)))
+            })
+            .collect();
+        let note = self.cleanup_note.clone();
+        std::thread::spawn(move || {
+            let data = crate::store::data_dir();
+            let facts = crate::cleanup::Facts {
+                busy: crate::cleanup::busy(),
+                done,
+            };
+            crate::cleanup::run(&data, &facts, false);
+            *note
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner) = crate::cleanup::note(&data);
+        });
+    }
+
     fn mark_finished(&mut self) {
         let done: Vec<String> = self
             .claude
@@ -2499,6 +2540,7 @@ impl eframe::App for App {
         self.claude.glance();
         self.glance_shells();
         self.mark_finished();
+        self.clean_up();
         self.mark_seen(ctx);
         self.poll_oauth(ctx);
         if let Some(backend) = &self.backend {

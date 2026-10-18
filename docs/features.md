@@ -206,3 +206,9 @@ changes land here and merge into the fork cleanly.
   the window is hidden.
 - **Optimistic:** your change shows at once and never flickers back.
 - **Several copies:** run more than one window; they share sessions and sign-in safely.
+- **Cleans up after itself:** session folders and dependency caches pile up (tens of
+  GB). Once a day Orbit quietly removes what can be rebuilt (ignored `node_modules`,
+  `.venv`, `target`, ... in folders idle for a week) and whole folders whose ticket is
+  done or that sat untouched for a month, only when every checkout in them is clean
+  and pushed. Settings → about shows one line with the result; `orbit cleanup
+  --dry-run` lists what would go; `"noCleanup": true` in settings.json turns it off.

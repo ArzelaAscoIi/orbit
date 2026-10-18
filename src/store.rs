@@ -164,6 +164,10 @@ pub struct Settings {
     /// trusted for Claude Code. Off: only Orbit's own session folders
     /// (<data>/work, <data>/repos); a repo you cd into asks in Claude Code.
     pub trust_shell_folders: bool,
+    /// Never clean up old session folders. Off (the default): once a day
+    /// Orbit removes what can be rebuilt or is finished in <data>/work and
+    /// <data>/repos/.deps (cleanup.rs); unpushed or uncommitted work stays.
+    pub no_cleanup: bool,
 }
 
 /// Laya (laya.rs), optional and exchangeable with Haiku for the New ticket

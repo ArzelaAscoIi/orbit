@@ -175,7 +175,7 @@ fn has_ref(repo: &Path, name: &str) -> bool {
     git(repo, &["show-ref", "--verify", "--quiet", name]).is_ok()
 }
 
-fn git(dir: &Path, args: &[&str]) -> Result<String> {
+pub(crate) fn git(dir: &Path, args: &[&str]) -> Result<String> {
     let output = Command::new("git")
         .arg("-C")
         .arg(dir)

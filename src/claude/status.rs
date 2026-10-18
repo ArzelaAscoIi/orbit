@@ -327,6 +327,25 @@ pub fn reports(log: &Path) -> Vec<Report> {
 
 #[cfg(test)]
 mod tests {
+
+    /// What Orbit's pi extension writes (pi-orbit.ts, through `report`):
+    /// the same states as Claude's hooks, so the row reads them alike.
+    #[test]
+    fn a_pi_sessions_reports_read_like_claudes() {
+        let log = std::env::temp_dir().join(format!("orbit-pi-status-{}.log", std::process::id()));
+        let _ = std::fs::remove_file(&log);
+        report(&log, "working", "").unwrap();
+        report(&log, "needs-approval", "make deploy").unwrap();
+        assert_eq!(
+            current(&reports(&log)).map(|r| r.state),
+            Some(State::NeedsApproval)
+        );
+        report(&log, "working", "").unwrap();
+        report(&log, "turn", "").unwrap();
+        assert_eq!(current(&reports(&log)).map(|r| r.state), Some(State::Turn));
+        let _ = std::fs::remove_file(&log);
+    }
+
     use super::*;
 
     #[test]

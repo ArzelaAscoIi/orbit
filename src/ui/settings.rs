@@ -46,7 +46,7 @@ fn local_agent(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                  the agent it started with.",
             ));
             ui.horizontal(|ui| {
-                for agent in [crate::claude::Agent::Claude, crate::claude::Agent::Codex] {
+                for agent in crate::claude::Agent::offered() {
                     let chosen = app.settings.local_agent == agent;
                     let button = egui::Button::image_and_text(agent_icon(ui, agent), agent.label())
                         .selected(chosen);

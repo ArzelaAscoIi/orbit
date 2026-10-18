@@ -19,7 +19,7 @@
   <a href="https://github.com/ArzelaAscoIi/orbit/releases/latest"><img src="https://img.shields.io/github/v/release/ArzelaAscoIi/orbit?include_prereleases&label=release&labelColor=333333&color=666666" alt="latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-666666?labelColor=333333" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/macOS-native%20Rust-666666?labelColor=333333" alt="native Rust, macOS">
-  <img src="https://img.shields.io/badge/agents-Claude%20Code%20%7C%20Codex-666666?labelColor=333333" alt="Claude Code and Codex">
+  <img src="https://img.shields.io/badge/agents-Claude%20Code%20%7C%20Codex%20%7C%20pi-666666?labelColor=333333" alt="Claude Code, Codex and pi">
 </p>
 
 ---
@@ -60,7 +60,7 @@ rest is your agents' work. Like [firstmate](https://github.com/kunchenguid/first
 it talks to you in outcomes. Unlike it, the queue is your team's real backlog.
 
 **2. Agents, split and orchestrated.** Triage, Plan, Build and Fix run in each
-ticket's own Claude Code (or Codex) session, in the background, in its own
+ticket's own Claude Code (or Codex, or pi) session, in the background, in its own
 worktree. Panes, tabs, and status from Claude Code's hooks tell you who is
 working, who is asking and who is done. **Run the board** works the whole
 backlog unattended and reports back. herdr's multiplexing, but every pane
@@ -156,7 +156,7 @@ xattr -dr com.apple.quarantine /Applications/Orbit.app   # not notarized yet
 Open it, click **Sign in with Linear** and pick your teams. Then press Cmd+K and choose
 **Start the tutorial** for a two-minute tour of every feature.
 
-Needs [Claude Code](https://claude.com/claude-code) or [Codex](https://developers.openai.com/codex),
+Needs [Claude Code](https://claude.com/claude-code), [Codex](https://developers.openai.com/codex) or [pi](https://pi.dev),
 `gh auth login`, and Apple silicon. An Anthropic key (Settings) turns on
 walkthroughs, briefs and test plans.
 

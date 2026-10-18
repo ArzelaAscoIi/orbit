@@ -92,6 +92,7 @@ src/claude/        Claude Code integration
   agents.rs        `claude agents --json` rows, transcripts, activity
   shell.rs         login-shell PATH, env scrubbing, claude/gh binaries
   codex.rs         Codex sessions: its local daemon, a native pane with Allow / Decline per permission
+  pi.rs            pi sessions: `pi --session-id` in an Orbit terminal; pi-orbit.ts (its extension) reports to the status log and asks before what the rules do not allow; tests/pi-extension.test.mjs
   terminal.rs      PTY + vt100 → egui; `Title` keeps the OSC title, `glance()` reads the screen for screen.rs
   screen.rs        herdr-style screen reading of an attached terminal: title spinner / "esc to interrupt" = Working, permission or question prompt = Blocked, prompt box = Prompt; `Live::label()` reads it before the hooks
   status.rs        hook-written status log per session (working / needs-decision / needs-approval / turn / pr / failed / ended / note); `report` is the session's own line (`note` = its one-line summary), `progress_hint` ends every brief

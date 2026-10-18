@@ -51,6 +51,21 @@ impl Terminal {
         Self::spawn_program(shell::claude_path(), cwd, args, ctx)
     }
 
+    /// Another agent's program (pi), with the environment its Orbit
+    /// integration reads.
+    pub(super) fn spawn_with(
+        program: &Path,
+        cwd: &Path,
+        args: &[String],
+        env: &[(String, String)],
+        ctx: &egui::Context,
+    ) -> Result<Self> {
+        if crate::read_only() {
+            anyhow::bail!("read-only: no terminals");
+        }
+        Self::open_with(program, cwd, args, env, ctx)
+    }
+
     /// The user's login shell, for a pane: k9s, logs, anything.
     pub fn shell(ctx: &egui::Context) -> Result<Self> {
         Self::shell_in(None, ctx)
@@ -108,6 +123,16 @@ impl Terminal {
     }
 
     fn open(program: &Path, cwd: &Path, args: &[String], ctx: &egui::Context) -> Result<Self> {
+        Self::open_with(program, cwd, args, &[], ctx)
+    }
+
+    fn open_with(
+        program: &Path,
+        cwd: &Path,
+        args: &[String],
+        env: &[(String, String)],
+        ctx: &egui::Context,
+    ) -> Result<Self> {
         let size = (40, 120);
         let pair = native_pty_system().openpty(PtySize {
             rows: size.0,
@@ -123,6 +148,9 @@ impl Terminal {
         command.env("PATH", shell::user_path());
         for name in shell::SCRUB {
             command.env_remove(name);
+        }
+        for (name, value) in env {
+            command.env(name, value);
         }
         let child = pair.slave.spawn_command(command)?;
         drop(pair.slave);

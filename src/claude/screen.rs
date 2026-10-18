@@ -39,6 +39,19 @@ pub fn classify(title: &str, bottom: &[&str]) -> Option<Seen> {
     if any("esc to interrupt") || any("mcp tasks still running") || any("mcp task still running") {
         return Some(Seen::Working);
     }
+    // pi: "Working..." or a braille spinner and "Working", alone or in a
+    // border (herdr's pi manifest).
+    if any("working...")
+        || lines.iter().any(|l| {
+            let l = l.trim_matches(|c: char| c == '─' || c.is_whitespace());
+            l.chars()
+                .next()
+                .is_some_and(|c| ('\u{2800}'..='\u{28FF}').contains(&c))
+                && l.ends_with(" working")
+        })
+    {
+        return Some(Seen::Working);
+    }
     if lines.iter().any(|l| {
         l.find("waiting for ")
             .map(|at| &l[at + "waiting for ".len()..])
@@ -65,6 +78,17 @@ pub fn classify(title: &str, bottom: &[&str]) -> Option<Seen> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pis_working_line_reads_as_working() {
+        assert_eq!(classify("pi", &["Working..."]), Some(Seen::Working));
+        assert_eq!(classify("pi", &["⠋ Working"]), Some(Seen::Working));
+        assert_eq!(
+            classify("pi", &["── ⠙ Working ──────"]),
+            Some(Seen::Working)
+        );
+        assert_eq!(classify("pi", &["working on it, nothing spinning"]), None);
+    }
 
     #[test]
     fn the_screen_says_working_blocked_or_prompt() {

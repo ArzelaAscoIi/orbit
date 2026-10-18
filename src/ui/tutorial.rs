@@ -903,10 +903,11 @@ pub const STEPS: &[Step] = &[
     step(
         Some("local-agent"),
         Some(View::Settings),
-        "Claude Code or Codex",
-        "Pick the local agent new sessions run with: Claude Code in a terminal, or your \
+        "Claude Code, Codex or pi",
+        "Pick the local agent new sessions run with: Claude Code in a terminal, your \
          installed Codex in a native pane with its answers, a prompt box and Allow or Decline \
-         on every permission it asks for. Every start is a split button: a click starts with the \
+         on every permission it asks for, or pi (when installed) in a terminal that asks before \
+         what the session's rules do not allow. Every start is a split button: a click starts with the \
          default, the chevron beside it picks the agent for that one session. A session \
          keeps its agent. The Codex \
          pane logs what you asked, its answers and each command (a failed one opens its \

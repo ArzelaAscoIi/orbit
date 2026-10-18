@@ -11,6 +11,12 @@
 //! Repos go into that folder as git worktrees (`worktree.rs`), never as a
 //! shared checkout.
 //!
+//! pi (pi.dev) is the third agent: an interactive `pi` in a terminal the
+//! app owns, with `--session-id` so each start resumes the same session;
+//! the process ends with the app and the next open resumes it. Orbit's
+//! extension (`pi-orbit.ts`) reports its state to the same status log the
+//! Claude hooks write and asks before what the session's rules do not allow.
+//!
 //! The brief (`--append-system-prompt`, sent again on every start) has two
 //! parts: the intent, which is the ticket's title, description and the
 //! user's own comments, word for word and never widened, in a block marked
@@ -19,6 +25,7 @@
 
 mod agents;
 pub mod codex;
+mod pi;
 pub mod screen;
 mod shell;
 pub mod status;
@@ -45,6 +52,7 @@ pub enum Agent {
     #[default]
     Claude,
     Codex,
+    Pi,
 }
 
 impl Agent {
@@ -52,30 +60,64 @@ impl Agent {
         match self {
             Self::Claude => "Claude Code",
             Self::Codex => "Codex",
+            Self::Pi => "pi",
         }
     }
 
-    /// "Claude" or "Codex", for "Work on it with …".
+    /// "Claude", "Codex" or "pi", for "Work on it with …".
     pub fn short(self) -> &'static str {
         match self {
             Self::Claude => "Claude",
             Self::Codex => "Codex",
+            Self::Pi => "pi",
         }
     }
 
-    /// The ticket's tab and the notes under its buttons: "claude", "codex".
+    /// The ticket's tab and the notes under its buttons: "claude", "codex", "pi".
     pub fn name(self) -> &'static str {
         match self {
             Self::Claude => "claude",
             Self::Codex => "codex",
+            Self::Pi => "pi",
         }
     }
 
-    pub fn other(self) -> Self {
-        match self {
-            Self::Claude => Self::Codex,
-            Self::Codex => Self::Claude,
-        }
+    /// The agents to offer: Claude Code and Codex, and pi when `pi` is on
+    /// the user's PATH (looked up once).
+    pub fn offered() -> Vec<Self> {
+        static PI: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        let pi = *PI.get_or_init(|| shell::which("pi").is_some());
+        offered_with(pi)
+    }
+}
+
+fn offered_with(pi: bool) -> Vec<Agent> {
+    let mut agents = vec![Agent::Claude, Agent::Codex];
+    if pi {
+        agents.push(Agent::Pi);
+    }
+    agents
+}
+
+/// Runs Orbit starts unattended (the board, the clone, Plan my day): they
+/// stay on Claude Code with pi picked, since pi has no allowlist of its own
+/// to run them without asking.
+const ON_CLAUDE: [&str; 6] = [
+    "Orchestrator",
+    "Operator",
+    "Plan",
+    "Goals",
+    "Clone",
+    "Mission",
+];
+
+/// The agent a start runs with: the key's, except a new unattended run
+/// with pi picked, which runs on Claude Code (`ON_CLAUDE`).
+fn runs_on(agent: Agent, spec: &Spec, saved: bool) -> Agent {
+    if agent == Agent::Pi && !saved && ON_CLAUDE.contains(&spec.identifier.as_str()) {
+        Agent::Claude
+    } else {
+        agent
     }
 }
 
@@ -1202,7 +1244,7 @@ impl Sessions {
 
     /// Whether the saved session has a transcript to resume.
     pub fn resumable(&self, key: &str) -> bool {
-        if self.agent_of(key) == Agent::Codex {
+        if matches!(self.agent_of(key), Agent::Codex | Agent::Pi) {
             return self.saved.contains_key(key);
         }
         self.saved.get(key).is_some_and(|saved| {
@@ -1261,6 +1303,7 @@ impl Sessions {
                         .map(|l| (l.session_id.clone(), l))
                         .collect();
                     self.add_codex_rows();
+                    self.add_pi_rows();
                     // What each of our sessions reported through its hooks.
                     self.status = self
                         .saved
@@ -1433,11 +1476,18 @@ impl Sessions {
         if self.is_attached(&spec.key) || self.starting.contains(&spec.key) {
             return;
         }
-        let agent = self.agent_of(&spec.key);
+        let agent = runs_on(
+            self.agent_of(&spec.key),
+            &spec,
+            self.saved.contains_key(&spec.key),
+        );
         // Until it is saved, the key's agent is the one it starts with, so
         // the pane and the buttons say the same.
         if !self.saved.contains_key(&spec.key) {
             self.next_agent.insert(spec.key.clone(), agent);
+        }
+        if agent == Agent::Pi {
+            return self.open_pi(spec, ctx);
         }
         if agent == Agent::Codex {
             let saved = self.saved.get(&spec.key);
@@ -1476,9 +1526,68 @@ impl Sessions {
         });
     }
 
+    /// Starts (or resumes, by its session id) an interactive `pi` in a
+    /// terminal of the app's own, in the session's folder.
+    fn open_pi(&mut self, spec: Spec, ctx: &egui::Context) {
+        let saved = self.saved.get(&spec.key).cloned();
+        let data = crate::store::data_dir();
+        let result =
+            pi::launch(&spec, saved.as_ref(), &self.work, &data).and_then(|(saved, args)| {
+                let program = shell::which("pi").context("pi is not on your PATH")?;
+                let envs = pi::env(&spec)?;
+                let terminal = Terminal::spawn_with(&program, &saved.cwd, &args, &envs, ctx)?;
+                Ok((saved, terminal))
+            });
+        match result {
+            Ok((saved, terminal)) => {
+                self.error = None;
+                self.notes.remove(&spec.key);
+                self.attached.insert(spec.key.clone(), terminal);
+                if self.saved.get(&spec.key).map(|s| &s.session_id) != Some(&saved.session_id) {
+                    let key = spec.key.clone();
+                    self.persist(|all| {
+                        all.insert(key, saved);
+                    });
+                }
+                self.polled = None;
+            }
+            Err(error) => {
+                let error = format!("pi: {error:#}");
+                self.notes.insert(spec.key.clone(), error.clone());
+                self.error = Some(error);
+            }
+        }
+    }
+
+    /// pi sessions as rows like Claude's: running while their terminal is,
+    /// stopped once it ended; the status log says the rest.
+    fn add_pi_rows(&mut self) {
+        let pi: Vec<Saved> = self
+            .saved
+            .values()
+            .filter(|s| s.agent == Agent::Pi)
+            .cloned()
+            .collect();
+        for saved in pi {
+            let key = self.key_of(&saved.session_id).cloned().unwrap_or_default();
+            let running = self.attached.get_mut(&key).is_some_and(Terminal::alive);
+            let mut row = codex_row(&saved, None);
+            row.kind = "pi".into();
+            row.state = (!running).then(|| "stopped".into());
+            self.rows.insert(saved.session_id.clone(), row);
+        }
+    }
+
     /// Stops the background session. Its conversation is kept, so opening
     /// it again resumes it.
     pub fn stop(&mut self, key: &str) {
+        // pi lives in its terminal: closing it ends the process; the session
+        // file stays, so opening it again resumes.
+        if self.agent_of(key) == Agent::Pi {
+            self.attached.remove(key);
+            self.polled = None;
+            return;
+        }
         if self.agent_of(key) == Agent::Codex {
             let id = key
                 .strip_prefix("cid:")
@@ -3249,6 +3358,23 @@ mod tests {
         assert!(spec.allow.iter().any(|a| a == "mcp__metrics"));
         // Claude Code refuses an approval even if the skill were ignored.
         assert!(spec.deny.iter().any(|d| d.starts_with("Bash(gh pr review")));
+    }
+
+    #[test]
+    fn pi_is_offered_only_when_installed_and_never_runs_unattended() {
+        assert_eq!(offered_with(false), [Agent::Claude, Agent::Codex]);
+        assert_eq!(offered_with(true), [Agent::Claude, Agent::Codex, Agent::Pi]);
+        let ticket = free("free:1", "x", None, Vec::new());
+        assert_eq!(runs_on(Agent::Pi, &ticket, false), Agent::Pi);
+        let board = orchestrator_spec_for_test();
+        assert_eq!(runs_on(Agent::Pi, &board, false), Agent::Claude);
+        assert_eq!(runs_on(Agent::Codex, &board, false), Agent::Codex);
+    }
+
+    fn orchestrator_spec_for_test() -> Spec {
+        let mut spec = free("orchestrator", "board", None, Vec::new());
+        spec.identifier = "Orchestrator".into();
+        spec
     }
 
     #[test]

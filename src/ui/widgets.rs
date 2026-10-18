@@ -801,7 +801,7 @@ pub(super) fn agent_choice(
             picked = Some(agent);
         }
         chevron_menu(ui, "With another agent", |ui| {
-            for choice in [crate::claude::Agent::Claude, crate::claude::Agent::Codex] {
+            for choice in crate::claude::Agent::offered() {
                 let mut name = choice.label().to_owned();
                 if choice == default {
                     name.push_str("  · default");
@@ -893,9 +893,12 @@ pub(super) fn github_mark(ui: &Ui) -> egui::Image<'static> {
 pub(super) fn agent_icon(ui: &Ui, agent: crate::claude::Agent) -> egui::Image<'static> {
     static CLAUDE: &Mask = include_bytes!("../../assets/claude-logo-64.alpha");
     static CODEX: &Mask = include_bytes!("../../assets/codex-logo-64.alpha");
+    // A plain π drawn for this app, not pi's own logo.
+    static PI: &Mask = include_bytes!("../../assets/pi-logo-64.alpha");
     match agent {
         crate::claude::Agent::Claude => mask(ui, "claude-logo", CLAUDE),
         crate::claude::Agent::Codex => mask(ui, "codex-logo", CODEX),
+        crate::claude::Agent::Pi => mask(ui, "pi-logo", PI),
     }
 }
 

@@ -305,7 +305,7 @@ fn clone_chat(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                     if !shown {
                         return;
                     }
-                    if initiatives.is_empty() {
+                    if app.missions.is_empty() {
                         ui.label(label("none yet"));
                     }
                     for row in &initiatives {
@@ -413,6 +413,7 @@ fn clone_chat(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                             }
                         });
                     }
+                    finished_missions(app, ui, actions);
                 })
                 .response
                 .rect;
@@ -593,6 +594,61 @@ fn pass_failed(app: &App) -> Option<(String, String)> {
 
 /// A section heading that folds: `// title −` open, `+` folded; a click
 /// flips it. Returns whether it is open.
+/// Finished missions under the running ones: the last two days, then a
+/// folded "+ N earlier". A click opens its session as a running one's does;
+/// × takes it off the list.
+fn finished_missions(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
+    let now = crate::activity::now_ms() as u64;
+    let (recent, earlier) = crate::mission::finished_lists(&app.missions, now);
+    let row = |ui: &mut Ui, it: &crate::mission::Initiative, actions: &mut Vec<Action>| {
+        let line = egui::vec2(ui.available_width(), 18.0);
+        ui.allocate_ui_with_layout(line, Layout::right_to_left(Align::Center), |ui| {
+            if link(ui, label("×"))
+                .on_hover_text("Take it off this list")
+                .clicked()
+            {
+                actions.push(Action::DismissMission(it.id.clone()));
+            }
+            ui.label(label(&crate::mission::outcome(it)).color(p().text_3));
+            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                if !it.parent.is_empty() {
+                    ui.label(label(&it.parent).color(p().text_3));
+                }
+                if link(ui, label(&it.goal).color(p().text_2))
+                    .on_hover_text("Open the session that drove it")
+                    .clicked()
+                {
+                    actions.push(Action::Steer(it.id.clone()));
+                }
+            });
+        });
+    };
+    if !recent.is_empty() {
+        ui.add_space(4.0);
+        ui.label(label("finished").color(p().text_3));
+        for it in recent {
+            row(ui, it, actions);
+        }
+    }
+    if !earlier.is_empty() {
+        let id = egui::Id::new("missions-earlier");
+        let open: bool = ui.data(|d| d.get_temp(id)).unwrap_or(false);
+        let text = if open {
+            "− earlier".to_owned()
+        } else {
+            format!("+ {} earlier", earlier.len())
+        };
+        if link(ui, label(&text).color(p().text_3)).clicked() {
+            ui.data_mut(|d| d.insert_temp(id, !open));
+        }
+        if open {
+            for it in earlier {
+                row(ui, it, actions);
+            }
+        }
+    }
+}
+
 fn fold(ui: &mut Ui, title: &str, open_at_first: bool) -> bool {
     let id = egui::Id::new(("fold", title));
     let open: bool = ui.data(|d| d.get_temp(id)).unwrap_or(open_at_first);

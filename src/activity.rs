@@ -100,6 +100,7 @@ pub const GATES: &[(&str, Gate)] = &[
     ("Operate", Gate::Do),
     ("Drive", Gate::Queue),
     ("StopDrive", Gate::Do),
+    ("DismissMission", Gate::Look),
     ("Instruct", Gate::Do),
     ("ToggleChat", Gate::Look),
     ("NewChat", Gate::Do),

@@ -65,6 +65,10 @@ is: *with the bot*, *waiting on WEB-171*, *next*.
 
 <p align="center"><img src="img/clone.png" alt="The clone panel driving WEB-170: one PR for your review, one with the bot, one waiting on its blocker, one next; below, the chat where the goal came in." width="900"></p>
 
+A finished mission stays in the panel under *finished* for two days, saying
+how it ended ("the reviews are yours: 2 PRs", or "stopped by you"), then
+folds into *earlier*.
+
 **5. You review and merge.** The next sub-ticket starts as soon as its blocker
 merges. When every sub-ticket has its PR, the initiative is done.
 

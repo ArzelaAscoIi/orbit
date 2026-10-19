@@ -58,6 +58,11 @@ pub struct Initiative {
     pub log: Vec<(u64, String)>,
     /// Every sub-ticket implemented (or stopped by the user).
     pub done: bool,
+    /// When it became done (unix millis); 0 in files from before: then the
+    /// last log line says when (`done_at`).
+    pub done_ms: u64,
+    /// Taken off the panel's finished list by the user (×).
+    pub dismissed: bool,
     /// Built here in Orbit sessions the clone runs, not by the bot: the
     /// drive hands nothing over and kicks nothing; it only follows.
     pub local: bool,
@@ -453,6 +458,40 @@ pub fn moving(phase: &str) -> bool {
         || phase == "with the bot"
 }
 
+/// Finished missions stay on the panel this long, then fold away.
+pub const RECENT_MS: u64 = 48 * 60 * 60 * 1000;
+
+/// When it became done: `done_ms`, else (files from before) its last log
+/// line, else when it was made.
+pub fn done_at(it: &Initiative) -> u64 {
+    match it.done_ms {
+        0 => it.log.last().map_or(it.created_ms, |(t, _)| *t),
+        t => t,
+    }
+}
+
+/// The panel's finished missions, newest first: done within `RECENT_MS`,
+/// and the earlier ones (folded). Dismissed ones are in neither.
+pub fn finished_lists(all: &[Initiative], now_ms: u64) -> (Vec<&Initiative>, Vec<&Initiative>) {
+    let mut done: Vec<&Initiative> = all.iter().filter(|i| i.done && !i.dismissed).collect();
+    done.sort_by_key(|i| std::cmp::Reverse(done_at(i)));
+    done.into_iter()
+        .partition(|i| now_ms.saturating_sub(done_at(i)) < RECENT_MS)
+}
+
+/// How a finished mission ended, in a few words for its row.
+pub fn outcome(it: &Initiative) -> String {
+    if it.log.iter().any(|(_, l)| l == "stopped by you") {
+        return "stopped by you".into();
+    }
+    let reviews = it.seen.values().filter(|s| *s == "In Review").count();
+    match reviews {
+        0 => "done".into(),
+        1 => "done · the review is yours: 1 PR".into(),
+        n => format!("done · the reviews are yours: {n} PRs"),
+    }
+}
+
 /// Stops the initiative with this id or parent: done, said in its log.
 pub fn stop(key: &str, now_ms: u64) -> std::io::Result<Vec<Initiative>> {
     let mut all = load();
@@ -461,6 +500,7 @@ pub fn stop(key: &str, now_ms: u64) -> std::io::Result<Vec<Initiative>> {
         .filter(|i| i.id == key || (i.parent == key && !i.done))
     {
         it.done = true;
+        it.done_ms = now_ms;
         it.log.push((now_ms, "stopped by you".into()));
     }
     crate::store::save(FILE, &all)?;
@@ -470,6 +510,51 @@ pub fn stop(key: &str, now_ms: u64) -> std::io::Result<Vec<Initiative>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finished_missions_stay_listed_for_two_days_then_fold() {
+        let h = 60 * 60 * 1000;
+        let it = |id: &str, done: bool, done_ms: u64, log_ms: u64, dismissed: bool| Initiative {
+            id: id.into(),
+            done,
+            done_ms,
+            dismissed,
+            log: vec![(log_ms, "x".into())],
+            ..Default::default()
+        };
+        let now = 100 * h;
+        let all = vec![
+            it("running", false, 0, now, false),
+            it("fresh", true, now - h, 0, false),
+            // A file from before done_ms: its last log line says when.
+            it("old-file", true, 0, now - 10 * h, false),
+            it("earlier", true, now - 50 * h, 0, false),
+            it("gone", true, now - h, 0, true),
+        ];
+        assert_eq!(done_at(&all[2]), now - 10 * h);
+        let (recent, earlier) = finished_lists(&all, now);
+        let ids = |v: &[&Initiative]| v.iter().map(|i| i.id.clone()).collect::<Vec<_>>();
+        assert_eq!(ids(&recent), ["fresh", "old-file"]);
+        assert_eq!(ids(&earlier), ["earlier"]);
+    }
+
+    #[test]
+    fn a_finished_mission_says_how_it_ended() {
+        let mut it = Initiative {
+            done: true,
+            ..Default::default()
+        };
+        assert_eq!(outcome(&it), "done");
+        it.seen.insert("ABC-2".into(), "In Review".into());
+        it.seen.insert("ABC-3".into(), "In Review".into());
+        it.seen.insert("ABC-4".into(), "Done".into());
+        assert_eq!(outcome(&it), "done · the reviews are yours: 2 PRs");
+        it.log.push((1, "stopped by you".into()));
+        assert_eq!(outcome(&it), "stopped by you");
+        // A recorded done time wins over the last log line.
+        it.done_ms = 7;
+        assert_eq!(done_at(&it), 7);
+    }
 
     fn kid(id: &str, team: &str, state: &str, kind: &str, blocked_by: &[&str]) -> Kid {
         Kid {

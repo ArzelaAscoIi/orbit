@@ -1329,6 +1329,11 @@ impl App {
                     }
                 }
             }
+            Action::DismissMission(id) => match crate::mission::update(&id, |i| i.dismissed = true)
+            {
+                Ok(all) => self.missions = all,
+                Err(error) => self.error = Some(format!("could not save the initiatives: {error}")),
+            },
             Action::StopDrive(key) => {
                 match crate::mission::stop(&key, crate::activity::now_ms() as u64) {
                     Ok(all) => self.missions = all,
@@ -2855,6 +2860,7 @@ impl App {
         }) {
             if let Ok(all) = crate::mission::update(&it.id, |i| {
                 i.done = true;
+                i.done_ms = now;
                 i.log.push((
                     now,
                     "the mission session ended without a parent ticket".into(),
@@ -3037,6 +3043,9 @@ impl App {
                     i.stalled = stalled;
                     i.kicked = kicked;
                     i.fallen_back = fallen_back;
+                    if finished && !i.done {
+                        i.done_ms = now;
+                    }
                     i.done |= finished;
                     i.log.extend(lines.into_iter().map(|l| (now, l)));
                 })

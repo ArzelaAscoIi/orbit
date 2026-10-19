@@ -169,6 +169,18 @@ fn main() -> eframe::Result {
     }
     // `orbit cleanup [--dry-run]`: one cleanup pass (cleanup.rs) from a
     // shell, without the board's done tickets. No window.
+    // `orbit sessions-stop [--dry-run]`: Orbit's own idle background
+    // sessions (claude/idle.rs), listed and stopped. No window.
+    if let [_, cmd, rest @ ..] = args.as_slice()
+        && cmd == "sessions-stop"
+    {
+        let dry = rest.iter().any(|a| a == "--dry-run");
+        if let Err(error) = claude::stop_idle_cli(dry) {
+            eprintln!("{error:#}");
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
     if let [_, cmd, rest @ ..] = args.as_slice()
         && cmd == "cleanup"
     {

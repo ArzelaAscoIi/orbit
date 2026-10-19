@@ -25,6 +25,7 @@
 
 mod agents;
 pub mod codex;
+pub mod idle;
 mod pi;
 pub mod screen;
 mod shell;
@@ -1580,6 +1581,54 @@ impl Sessions {
 
     /// Stops the background session. Its conversation is kept, so opening
     /// it again resumes it.
+    /// Stops Orbit's own background sessions nobody needs (idle.rs):
+    /// `in_front` and `protected` are the app's say (panes, the board run).
+    /// The keys stopped.
+    pub fn stop_idle(
+        &mut self,
+        in_front: &HashSet<String>,
+        protected: &[&str],
+        after: std::time::Duration,
+    ) -> Vec<String> {
+        let now = std::time::SystemTime::now();
+        let stop: Vec<(String, String)> = self
+            .saved
+            .iter()
+            .filter(|(_, s)| s.agent == Agent::Claude)
+            .filter_map(|(key, s)| {
+                let row = self.rows.get(&s.session_id)?;
+                let seen = idle::Seen {
+                    working: !idle::idle_row(row),
+                    in_front: in_front.contains(key) || self.starting.contains(key),
+                    protected: protected.contains(&key.as_str())
+                        || self.pending_lines.contains_key(key)
+                        || self.enters.contains_key(key)
+                        || self.stopping.contains(key),
+                    finished: row.finished,
+                    last: idle::last_activity(
+                        s,
+                        self.status.get(key).map_or(&[][..], Vec::as_slice),
+                        self.seen.get(key).copied(),
+                    ),
+                };
+                idle::should_stop(&seen, now, after).then(|| {
+                    let short = row.id.clone().unwrap_or_else(|| s.short_id().to_owned());
+                    (key.clone(), short)
+                })
+            })
+            .collect();
+        let data = crate::store::data_dir();
+        for (key, short) in &stop {
+            idle::log(&data, key, short);
+            self.notes.insert(
+                key.clone(),
+                "stopped while idle; opens again where it left off".into(),
+            );
+            self.stop(key);
+        }
+        stop.into_iter().map(|(key, _)| key).collect()
+    }
+
     pub fn stop(&mut self, key: &str) {
         // pi lives in its terminal: closing it ends the process; the session
         // file stays, so opening it again resumes.
@@ -2029,6 +2078,37 @@ fn free_repos() -> String {
         ),
         Err(_) => format!("To change code, clone the repository into this folder. {NOT_GIT}"),
     }
+}
+
+/// `orbit sessions-stop [--dry-run]`: Orbit's own Claude background
+/// sessions quiet for 12 hours (idle.rs), listed, and stopped without the
+/// flag. Outside the app it cannot see panes or done tickets, so only the
+/// idle rule applies.
+pub fn stop_idle_cli(dry_run: bool) -> anyhow::Result<()> {
+    let saved: BTreeMap<String, Saved> =
+        crate::store::load_at(&crate::store::data_dir().join("sessions.json"));
+    let rows = agents::running()?;
+    let plan = idle::plan_cli(
+        &saved,
+        &rows,
+        |key| status::reports(&status::path(key)),
+        std::time::SystemTime::now(),
+        idle::idle_after(0),
+    );
+    for (key, short) in &plan {
+        println!("{short}  {key}");
+        if !dry_run {
+            shell::claude().args(["stop", short]).output()?;
+            idle::log(&crate::store::data_dir(), key, short);
+        }
+    }
+    let verb = if dry_run { "would stop" } else { "stopped" };
+    println!(
+        "{} {verb} ({} of Orbit's sessions known)",
+        plan.len(),
+        saved.len()
+    );
+    Ok(())
 }
 
 /// The triage session, which starts by running the triage skill.

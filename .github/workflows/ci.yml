@@ -8,6 +8,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A fork's scheduled sync opens its PR with the Actions token, which
+  # starts no pull_request run; the sync workflow dispatches this one.
+  workflow_dispatch:
 
 permissions:
   contents: read

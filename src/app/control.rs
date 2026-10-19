@@ -801,6 +801,9 @@ mod tests {
         let parse = |v: Value| serde_json::from_value::<Action>(v).unwrap();
         assert!(yours(&parse(json!({"Approve": {"url": "u", "head": "h"}}))));
         assert!(yours(&parse(json!({"Merge": {"url": "u", "head": "h"}}))));
+        assert!(yours(&parse(json!({"ReviewSummary": {
+            "url": "u", "head": "h", "body": "b", "changes": true
+        }}))));
         assert!(yours(&parse(
             json!({"WithAgent": ["codex", {"Merge": {"url": "u", "head": "h"}}]})
         )));

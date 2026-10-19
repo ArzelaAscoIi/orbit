@@ -36,11 +36,13 @@ pub(super) fn show(app: &mut App, card: &Card, pr: &Pr, ui: &mut Ui, actions: &m
             // ticket's row, but not on a diff new commits left behind.
             if app.moved(&pr.url).is_none() {
                 super::ticket::merge(app, pr, ui, actions);
+                review_menu(app, pr, ui);
                 super::ticket::approve(app, pr, ui, actions);
                 super::ticket::update_branch(app, pr, ui, actions);
             }
         });
     });
+    review_composer(app, pr, ui, actions);
     ui.add_space(8.0);
     super::ticket::pr_verdict(app, pr, false, false, ui);
     ui.add_space(6.0);
@@ -1325,6 +1327,136 @@ fn wrap_up(app: &App, card: &Card, url: &str, ui: &mut Ui, actions: &mut Vec<Act
     });
 }
 
+/// Which review the composer under the header writes, per PR: Some(true)
+/// requests changes, Some(false) comments. egui memory, not App.
+fn composing(ui: &Ui, url: &str) -> Option<bool> {
+    ui.data(|d| d.get_temp::<bool>(egui::Id::new(("review-composer", url))))
+}
+
+/// Review ▾ beside Approve: Comment, or Request changes (not on the user's
+/// own PR: GitHub refuses it). Opens the composer below the header.
+fn review_menu(app: &App, pr: &story::Pr, ui: &mut Ui) {
+    let Some(Ok(gate)) = app.gates.get(&pr.url) else {
+        return;
+    };
+    if !pr.open || composing(ui, &pr.url).is_some() {
+        return;
+    }
+    let mut pick = None;
+    let rect = ui
+        .menu_button("Review ▾", |ui| {
+            if ui
+                .button("Comment…")
+                .on_hover_text("A review comment, without approving")
+                .clicked()
+            {
+                pick = Some(false);
+                ui.close();
+            }
+            if review_choices(gate.own).1
+                && ui
+                    .button("Request changes…")
+                    .on_hover_text("Asks the author to change something before it merges")
+                    .clicked()
+            {
+                pick = Some(true);
+                ui.close();
+            }
+        })
+        .response
+        .rect;
+    mark(app, ui, "review-menu", rect);
+    if let Some(changes) = pick {
+        ui.data_mut(|d| {
+            d.insert_temp(egui::Id::new(("review-composer", pr.url.as_str())), changes)
+        });
+    }
+}
+
+/// (Comment, Request changes) offered on a PR: GitHub refuses requesting
+/// changes on your own PR.
+fn review_choices(own: bool) -> (bool, bool) {
+    (true, !own)
+}
+
+/// The composer the Review menu opened: what you think, then Send posts it
+/// with any drafted line comments as one review at the head the diff shows.
+fn review_composer(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
+    let Some(changes) = composing(ui, &pr.url) else {
+        return;
+    };
+    let key = egui::Id::new(("review-composer", pr.url.as_str()));
+    let text_id = egui::Id::new(("review-text", pr.url.as_str()));
+    let mut text = ui
+        .data(|d| d.get_temp::<String>(text_id))
+        .unwrap_or_default();
+    ui.add_space(6.0);
+    let what = if changes {
+        "request changes"
+    } else {
+        "comment"
+    };
+    ui.label(label(&format!("// {what}")));
+    if app.reviewing.contains(&pr.url) {
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label(RichText::new("Posting your review…").color(p().text_2));
+        });
+        return;
+    }
+    ui.add(
+        egui::TextEdit::multiline(&mut text)
+            .hint_text(if changes {
+                "what should change, and why"
+            } else {
+                "what you think of it"
+            })
+            .desired_rows(3)
+            .desired_width(f32::INFINITY),
+    );
+    let drafts = app.drafts.get(&pr.url).map_or(0, Vec::len);
+    let mut close = false;
+    ui.horizontal(|ui| {
+        let head = post_head(app, &pr.url);
+        let ready = !text.trim().is_empty() || (!changes && drafts > 0);
+        match head {
+            Ok(head) => {
+                let short = &head[..7.min(head.len())];
+                let also = match drafts {
+                    0 => String::new(),
+                    n => format!(" with your {n} line comment(s)"),
+                };
+                let send = ui
+                    .add_enabled(ready, egui::Button::new("Send"))
+                    .on_hover_text(format!("Posts it{also} at {short}, as you, on GitHub."));
+                if send.clicked() {
+                    actions.push(Action::ReviewSummary {
+                        url: pr.url.clone(),
+                        head,
+                        body: text.clone(),
+                        changes,
+                    });
+                    close = true;
+                }
+            }
+            Err(why) => {
+                ui.label(label(why));
+            }
+        }
+        if ui.button("Cancel").clicked() {
+            close = true;
+        }
+    });
+    ui.data_mut(|d| {
+        if close {
+            d.remove::<bool>(key);
+            d.remove::<String>(text_id);
+        } else {
+            d.insert_temp(text_id, text);
+        }
+    });
+}
+
 /// The head a review posts at, bound to the commit the diff shows (new
 /// commits make GitHub refuse), or why it cannot post now.
 fn post_head(app: &App, url: &str) -> Result<String, &'static str> {
@@ -1421,6 +1553,12 @@ fn code(text: &str, color: Color32, snippet: Option<&str>) -> egui::text::Layout
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn request_changes_is_not_offered_on_your_own_pr() {
+        assert_eq!(super::review_choices(true), (true, false));
+        assert_eq!(super::review_choices(false), (true, true));
+    }
+
     use super::*;
 
     #[test]

@@ -68,6 +68,9 @@ them?): it answers in a few sentences from the diff, the ticket and the step you
 and remembers what you asked. Once you asked, **Note for the approval** writes one short
 line in your voice ("Makes sense, I also checked..."), and **Approve** posts it.
 
+**Review ▾** beside Approve posts a Comment or Request changes review with your summary and
+any drafted line comments, at the commit you saw.
+
 Approve, merge, add to the merge queue, merge when ready, update the branch: each only
 on your click, bound to the commit you saw, checked again right before. **Review the
 changes** after new commits shows what changed since your review.

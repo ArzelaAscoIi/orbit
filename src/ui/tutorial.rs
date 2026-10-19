@@ -781,6 +781,14 @@ pub const STEPS: &[Step] = &[
          since, it refuses and asks you to look again.",
     ),
     step(
+        Some("review-menu"),
+        None,
+        "Comment or request changes",
+        "Review ▾ beside Approve, at the top of a PR's diff: Comment, or Request changes (not \
+         on your own PR). Write what you think and Send posts it as your review, with any line \
+         comments you drafted, at the commit you looked at.",
+    ),
+    step(
         Some("ai-review"),
         None,
         "Request an AI review",

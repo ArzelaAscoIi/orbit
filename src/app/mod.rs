@@ -383,6 +383,8 @@ pub enum Action {
     Steer(String),
     /// Stops driving this parent ticket.
     StopDrive(String),
+    /// Takes a finished mission off the panel's finished list, by id.
+    DismissMission(String),
     /// Tells the clone what to do, in the user's words: a Claude run that
     /// researches, files the tickets and hands the parent to a mission.
     Instruct(String),

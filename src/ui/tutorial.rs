@@ -267,6 +267,8 @@ pub const STEPS: &[Step] = &[
          words with new mission (or Cmd+K Mission: …): your clone researches, files the parent \
          and sub-tickets, then Orbit drives them. The heading's − folds the list. Orbit tells you \
          once for each PR to review, block or merge, and when one sits with the bot for an hour. \
+         A finished one stays under finished for two days, saying how it ended (the reviews \
+         are yours, or stopped by you), then folds into earlier; its × takes it off. \
          Each row: how far, what is yours, then each sub-ticket's step in a word (building, \
          fixing comments, your review, merging, waiting on, done) with its session's note, else \
          what the bot did last and when; a breathing dot shows what runs right now (bot quiet: \

@@ -52,8 +52,8 @@ shot: ## screenshot a view: make shot VIEW=foryou|stories|intake|sessions|custom
 bundle: ## build dist/Orbit.app (Apple silicon, ad-hoc signed)
 	scripts/bundle-macos.sh
 
-sync: ## in a fork: merge upstream's main, then make check (docs/forks.md)
-	scripts/fork.sh sync
+sync: ## in a fork: merge upstream's main, then make check (SYNC_FLAGS=--no-check skips it; docs/forks.md)
+	scripts/fork.sh sync $(SYNC_FLAGS)
 
 upstream: ## in a fork: send commits upstream as a PR: make upstream C="<sha> <sha>"
 	scripts/fork.sh upstream $(C)

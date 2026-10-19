@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # A company fork and the upstream repo, both ways (docs/forks.md).
 #
-#   scripts/fork.sh sync              merge upstream's main into this branch, then make check
+#   scripts/fork.sh sync [--no-check] merge upstream's main into this branch, then make check
+#                                     (relinks first when a squash dropped upstream's history)
 #   scripts/fork.sh upstream <commit>...
 #                                     open a PR upstream with these commits, cherry-picked
 #                                     onto upstream's main; refused when one touches the
@@ -20,10 +21,10 @@ deny=${UPSTREAM_DENY:-}
 
 # The remote that points at upstream, whatever this clone calls it.
 # Exact repo only: owner/repo must not also match owner/repo-private.
-remote=$(git remote -v | awk -v r="$repo" '$3 == "(fetch)" {
+remote=$(git remote -v | awk -v r="${repo%.git}" '$3 == "(fetch)" {
   u = $2; sub(/\.git$/, "", u); sub(/\/$/, "", u)
   n = length(u) - length(r)
-  if (n > 0 && substr(u, n + 1) == r && substr(u, n, 1) ~ /[:\/]/) { print $1; exit }
+  if (u == r || (n > 0 && substr(u, n + 1) == r && substr(u, n, 1) ~ /[:\/]/)) { print $1; exit }
 }')
 if [ -z "$remote" ]; then
   remote=upstream
@@ -32,11 +33,33 @@ fi
 git diff --quiet && git diff --cached --quiet || { echo "commit or stash your changes first" >&2; exit 1; }
 git fetch -q "$remote"
 
+# A squash-merged sync PR drops upstream's commits from the fork's history,
+# so git would see unrelated histories. Before merging: find the newest
+# upstream commit the fork already matches outside its overlay and, when it
+# is not yet an ancestor, record it as merged (keeping the fork's files).
+relink() {
+  local exclude=() c
+  for p in $paths; do exclude+=(":(exclude)$p"); done
+  for c in $(git rev-list "$remote/main"); do
+    if [ -z "$(git diff --name-only "$c" HEAD -- . "${exclude[@]}")" ]; then
+      git merge-base --is-ancestor "$c" HEAD && return 0
+      git merge -q -s ours --allow-unrelated-histories --no-edit "$c" \
+        -m "Record upstream $(git rev-parse --short "$c") as merged (its content is already here)"
+      return 0
+    fi
+  done
+}
+
 case "${1:-}" in
   sync)
+    relink
     git merge --no-edit "$remote/main"
-    make check
-    echo "Merged $repo main. Push this branch and open its PR in the fork."
+    if [ "${2:-}" = "--no-check" ]; then
+      echo "Merged $repo main (not checked)."
+    else
+      make check
+      echo "Merged $repo main. Push this branch and open its PR in the fork."
+    fi
     ;;
   upstream)
     shift

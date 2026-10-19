@@ -52,16 +52,15 @@ acme
 make sync     # merge upstream's main into this branch, then make check
 ```
 
-Then push the branch and merge it in the fork. Upstream's changes never
-touch the overlay, so this is a fast, clean merge. Merge sync PRs with
-**Create a merge commit**, never squash: a squash drops the link to
-upstream's history, and the next sync fails with "unrelated histories"
-(fix: `git merge -s ours --allow-unrelated-histories <the upstream commit
-the fork already matches>`, then sync again).
+Then push the branch and merge it in the fork, any way you like: a
+squash-merged sync PR drops upstream's commits from the fork's history, and
+the next sync notices and records the upstream commit the fork already
+matches before merging (`relink` in `scripts/fork.sh`).
 
 To have it happen on its own, put this workflow in the fork (it is part of
 the overlay, upstream does not have it). Every Monday it merges upstream
-into `sync/upstream` and opens or updates a PR; CI then runs on it as usual.
+into `sync/upstream`, opens or updates a PR and starts CI on it (a PR
+opened with the Actions token starts none by itself).
 
 ```yaml
 # .github/workflows/sync-upstream.yml (in the fork only)
@@ -81,17 +80,16 @@ jobs:
       - name: Merge upstream main
         env:
           GH_TOKEN: ${{ github.token }}
-          UPSTREAM: acme-oss/orbit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote add upstream "https://github.com/$UPSTREAM.git"
-          git fetch upstream main
           git switch -C sync/upstream
-          git merge --no-edit upstream/main
+          make sync SYNC_FLAGS=--no-check
           git push -f origin sync/upstream
           gh pr view sync/upstream >/dev/null 2>&1 \
-            || gh pr create --head sync/upstream --title "Sync upstream" --body "Merges $UPSTREAM main. Merge with a merge commit, never squash."
+            || gh pr create --head sync/upstream --title "Sync upstream" --body "Merges upstream main."
+          # A PR opened with this token starts no CI run of its own.
+          gh workflow run ci.yml --ref sync/upstream
 ```
 
 A merge conflict fails the run: someone edited generic code in the fork.

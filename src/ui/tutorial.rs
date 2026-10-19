@@ -225,7 +225,8 @@ pub const STEPS: &[Step] = &[
          With Laya on it lifts sessions whose last message asks \
          you something (the Laya chip). The first five are now, the rest later. Enter or a click opens one \
          in a window of its own, or goes to the window already showing it; a stopped one \
-         resumes. A session Orbit did not start says where it runs (\"in Ghostty\", \"in the background, not by Orbit\"); \
+         resumes. Orbit stops its own sessions that sit idle out of sight for half a day (an hour \
+         once their ticket is done), so they hold no memory; opening one picks it up again. A session Orbit did not start says where it runs (\"in Ghostty\", \"in the background, not by Orbit\"); \
          clicking one running in a terminal app brings that app to the front. x stops it, Shift+X closes it: stopped and off the list, the conversation kept in Claude Code. A new session without a ticket is Cmd+K: New session: <what>, \
          with \"in <folder>\" at the end to pick its folder.",
     ),

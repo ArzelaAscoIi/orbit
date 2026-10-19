@@ -168,6 +168,13 @@ pub struct Settings {
     /// Orbit removes what can be rebuilt or is finished in <data>/work and
     /// <data>/repos/.deps (cleanup.rs); unpushed or uncommitted work stays.
     pub no_cleanup: bool,
+    /// Keep every background session running. Off (the default): Orbit
+    /// stops its own Claude sessions nobody needs (idle, not in front, quiet
+    /// for idleSessionHours or an hour after their ticket is done); the
+    /// transcript stays and opening one resumes it (claude/idle.rs).
+    pub keep_idle_sessions: bool,
+    /// Hours a session may sit idle before it is stopped; 0: 12.
+    pub idle_session_hours: u32,
 }
 
 /// Laya (laya.rs), optional and exchangeable with Haiku for the New ticket

@@ -76,6 +76,7 @@ src/testplan.rs    TestPlan: Sonnet reply parser, Linear comment render/parse, p
 src/work.rs        Plan my day (the sheet's 2 tab): the spotter session (skills/spot) reads the goals + cycle prio docs first, writes the day to spots.json (focus, spots best first incl. route `you`, reach, blind, park); done.json (spots started; read-modify-write); `to_start`: the best `now` spots start on their own, at most `work.autoStart`; a spot's brief (Fix now) and ticket note (File a ticket → capture.rs)
 src/today.rs       date(): the key of what is made once a day
 src/tray.rs        the menu bar icon: count of what waits on the user, a menu of sessions and For you; `menuBar: false` hides it
+src/claude/idle.rs which of Orbit's own background sessions to stop (idle, out of sight, quiet 12 h or an hour after done), every 10 min off the UI thread, and `orbit sessions-stop [--dry-run]`
 src/cleanup.rs     disk cleanup, daily off the UI thread and `orbit cleanup [--dry-run]`: artifacts in idle session folders, finished folders (clean and pushed), unlinked .deps; rules in its module comment
 src/update.rs      update in place: the newest release's *-macos.zip via `gh`, swapped in for the running Orbit.app
 src/demo.rs        ORBIT_DEMO=1: a made-up company's board, PRs and sessions from tests/demo/, never the network (README GIF, screenshots)

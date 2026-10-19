@@ -940,6 +940,8 @@ pub struct App {
     /// When the next cleanup pass runs (cleanup.rs): 2 minutes after
     /// start, then daily, off the UI thread.
     cleanup_due: std::time::Instant,
+    /// When idle background sessions are looked at next (claude/idle.rs).
+    idle_due: std::time::Instant,
     /// The last pass's line for Settings ("storage: … · freed … on …").
     pub cleanup_note: std::sync::Arc<std::sync::Mutex<Option<String>>>,
     /// The PRs the user's Land click covers, by URL, with the head they saw
@@ -1247,6 +1249,7 @@ impl App {
             herdr_agents: Vec::new(),
             herdr_asked: None,
             cleanup_due: std::time::Instant::now() + std::time::Duration::from_secs(120),
+            idle_due: std::time::Instant::now() + std::time::Duration::from_secs(120),
             cleanup_note: std::sync::Arc::new(std::sync::Mutex::new(crate::cleanup::note(
                 &crate::store::data_dir(),
             ))),
@@ -2223,6 +2226,30 @@ impl App {
     /// Starts a cleanup pass when one is due (cleanup.rs), with the
     /// board's done and canceled tickets; the files are read and deleted
     /// on a thread of its own.
+    /// Every ten minutes: Orbit's own background sessions nobody needs are
+    /// stopped (claude/idle.rs). The hourly pass always runs on, and the
+    /// board run while the autopilot is on.
+    fn stop_idle_sessions(&mut self) {
+        let now = std::time::Instant::now();
+        if self.settings.keep_idle_sessions || now < self.idle_due || crate::read_only() {
+            return;
+        }
+        self.idle_due = now + std::time::Duration::from_secs(600);
+        let in_front: std::collections::HashSet<String> = self
+            .claude
+            .saved
+            .keys()
+            .filter(|key| self.session_in_window(key).is_some())
+            .cloned()
+            .collect();
+        let mut protected = vec![crate::claude::OPERATOR];
+        if self.autopilot.on || self.autopilot.pending {
+            protected.push(crate::claude::ORCHESTRATOR);
+        }
+        let after = crate::claude::idle::idle_after(self.settings.idle_session_hours);
+        self.claude.stop_idle(&in_front, &protected, after);
+    }
+
     fn clean_up(&mut self) {
         let now = std::time::Instant::now();
         if self.settings.no_cleanup || now < self.cleanup_due || crate::read_only() {
@@ -2550,6 +2577,7 @@ impl eframe::App for App {
         self.glance_shells();
         self.mark_finished();
         self.clean_up();
+        self.stop_idle_sessions();
         self.mark_seen(ctx);
         self.poll_oauth(ctx);
         if let Some(backend) = &self.backend {

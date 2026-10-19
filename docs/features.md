@@ -124,7 +124,10 @@ working, and turns itself off after eight runs.
 ### Sessions: every Claude session on your Mac
 
 Grouped by what they need: approval, working, your turn. Start a session for work with
-no ticket, in its own folder or one you name.
+no ticket, in its own folder or one you name. Orbit stops its own background sessions that
+sit idle out of sight for 12 hours (an hour once their ticket is done), so finished work
+holds no memory; opening one resumes it where it left off. `keepIdleSessions` keeps them
+running, `idleSessionHours` changes the wait, `orbit sessions-stop --dry-run` lists them.
 
 
 ### Stories, customers, intake

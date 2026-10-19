@@ -4,7 +4,8 @@
 
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
@@ -44,6 +45,39 @@ pub struct Terminal {
     /// line that blinks between two tool calls does not read as a turn
     /// that ended (herdr holds its idle the same way).
     working_at: Option<Instant>,
+    /// Bumped by the reader thread on every chunk of output: a glance
+    /// reads the screen again only when this moved.
+    output: Arc<AtomicU64>,
+    /// When `show` last drew it (`since_start` ms): output repaints at once
+    /// only while it is on screen, a hidden one at most once a second.
+    shown: Arc<AtomicU64>,
+    /// The last glance: the output count it read and what it saw.
+    glanced: Option<(u64, Instant, Option<super::screen::Seen>)>,
+}
+
+/// Milliseconds since the app started, for times shared with threads.
+fn since_start() -> u64 {
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_millis() as u64
+}
+
+/// How a terminal's new output asks for a frame: at once while it was drawn
+/// in the last second, else within a second (its status still updates).
+fn output_repaint(now_ms: u64, shown_ms: u64) -> Option<Duration> {
+    if shown_ms != 0 && now_ms.saturating_sub(shown_ms) < 1000 {
+        None
+    } else {
+        Some(Duration::from_secs(1))
+    }
+}
+
+/// Whether a glance reads the screen again: new output since the last
+/// one, and that one at least half a second ago.
+fn glance_again(last: Option<(u64, Instant)>, output: u64) -> bool {
+    match last {
+        None => true,
+        Some((seen, at)) => seen != output && at.elapsed() >= Duration::from_millis(500),
+    }
 }
 
 impl Terminal {
@@ -165,7 +199,11 @@ impl Terminal {
         let writer = pair.master.take_writer()?;
         let sink = screen.clone();
         let ctx = ctx.clone();
-        // Reading blocks, so it gets its own thread; each chunk repaints.
+        let output = Arc::new(AtomicU64::new(0));
+        let shown = Arc::new(AtomicU64::new(0));
+        let (bump, drawn) = (output.clone(), shown.clone());
+        // Reading blocks, so it gets its own thread; each chunk repaints
+        // (at once only while the terminal is on screen).
         std::thread::Builder::new()
             .name("claude-pty".into())
             .spawn(move || {
@@ -177,7 +215,11 @@ impl Terminal {
                     sink.lock()
                         .unwrap_or_else(PoisonError::into_inner)
                         .process(&buf[..n]);
-                    ctx.request_repaint();
+                    bump.fetch_add(1, Ordering::Relaxed);
+                    match output_repaint(since_start(), drawn.load(Ordering::Relaxed)) {
+                        None => ctx.request_repaint(),
+                        Some(after) => ctx.request_repaint_after(after),
+                    }
                 }
                 ctx.request_repaint();
             })?;
@@ -192,6 +234,9 @@ impl Terminal {
             exited: false,
             spawned: Instant::now(),
             working_at: None,
+            output,
+            shown,
+            glanced: None,
         })
     }
 
@@ -227,7 +272,11 @@ impl Terminal {
         if self.spawned.elapsed() < Duration::from_secs(3) {
             return None;
         }
-        let seen = {
+        let output = self.output.load(Ordering::Relaxed);
+        let last = self.glanced.as_ref().map(|(o, at, _)| (*o, *at));
+        let seen = if !glance_again(last, output) {
+            self.glanced.as_ref().and_then(|(.., seen)| *seen)
+        } else {
             let parser = self.screen.lock().unwrap_or_else(PoisonError::into_inner);
             let screen = parser.screen();
             let rows: Vec<String> = screen.rows(0, self.size.1).collect();
@@ -238,7 +287,9 @@ impl Terminal {
                 .filter(|r| !r.is_empty())
                 .take(12)
                 .collect();
-            super::screen::classify(&parser.callbacks().0, &bottom)
+            let seen = super::screen::classify(&parser.callbacks().0, &bottom);
+            self.glanced = Some((output, Instant::now(), seen));
+            seen
         };
         match seen {
             Some(Seen::Working) => self.working_at = Some(Instant::now()),
@@ -306,6 +357,9 @@ impl Drop for Terminal {
 /// Draws the terminal into the rest of `ui` and, while it has focus, sends
 /// it the keyboard. Returns the link the user Cmd+clicked, if any.
 pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
+    terminal
+        .shown
+        .store(since_start().max(1), Ordering::Relaxed);
     let font = FontId::monospace(13.0);
     let (cell_w, cell_h) = ui.fonts_mut(|f| (f.glyph_width(&font, 'M'), f.row_height(&font)));
     let rect = ui.available_rect_before_wrap();
@@ -915,5 +969,115 @@ mod tests {
         );
         assert_eq!(color(vt100::Color::Idx(255), true), Color32::from_gray(238));
         assert_eq!(color(vt100::Color::Default, false), theme::p().bg);
+    }
+}
+
+#[cfg(test)]
+mod idle {
+    use super::*;
+
+    #[test]
+    fn hidden_output_repaints_within_a_second_shown_output_at_once() {
+        assert_eq!(
+            output_repaint(5_000, 4_500),
+            None,
+            "drawn half a second ago"
+        );
+        assert_eq!(
+            output_repaint(5_000, 3_000),
+            Some(Duration::from_secs(1)),
+            "hidden"
+        );
+        assert_eq!(
+            output_repaint(5_000, 0),
+            Some(Duration::from_secs(1)),
+            "never drawn"
+        );
+    }
+
+    #[test]
+    fn a_glance_reads_the_screen_only_after_new_output_and_half_a_second() {
+        let long_ago = Instant::now()
+            .checked_sub(Duration::from_millis(600))
+            .unwrap();
+        assert!(glance_again(None, 0), "first glance");
+        assert!(!glance_again(Some((7, long_ago)), 7), "nothing new");
+        assert!(
+            !glance_again(Some((7, Instant::now())), 8),
+            "new, but just read"
+        );
+        assert!(glance_again(Some((7, long_ago)), 8), "new and due");
+    }
+}
+
+#[cfg(test)]
+mod perf {
+    use super::*;
+
+    /// Load test (run by hand): 30 hidden terminals with full screens that
+    /// redraw a spinner every 100 ms, like working Claude Code sessions.
+    /// Simulates the app loop: a frame (with a glance pass) runs only when
+    /// a repaint is pending, checked every 16 ms. Prints frames/s and the
+    /// time spent in glance.
+    #[test]
+    #[ignore]
+    fn hidden_terminals_load() {
+        let ctx = egui::Context::default();
+        // When the next frame is due, as eframe would wait for it.
+        let due = Arc::new(Mutex::new(None::<Instant>));
+        let d = due.clone();
+        ctx.set_request_repaint_callback(move |info| {
+            let at = Instant::now() + info.delay;
+            let mut due = d.lock().unwrap();
+            if due.is_none_or(|t| at < t) {
+                *due = Some(at);
+            }
+        });
+        let dir = std::env::temp_dir().join(format!("orbit-perf-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("spin.sh");
+        std::fs::write(
+            &script,
+            "i=0; while [ $i -lt 38 ]; do echo \"line $i of a long transcript with tool output and some more text to fill the row\"; i=$((i+1)); done\n\
+             while :; do for c in a b c d; do printf '\\r%s Working... (esc to interrupt)' $c; sleep 0.1; done; done\n",
+        )
+        .unwrap();
+        let mut terms: Vec<Terminal> = (0..30)
+            .map(|_| {
+                Terminal::open(
+                    Path::new("/bin/sh"),
+                    &dir,
+                    &[script.to_string_lossy().into_owned()],
+                    &ctx,
+                )
+                .unwrap()
+            })
+            .collect();
+        std::thread::sleep(Duration::from_millis(3500));
+        let _ = ctx.run_ui(Default::default(), |_| {});
+        let start = Instant::now();
+        let (mut frames, mut glance_time) = (0u32, Duration::ZERO);
+        while start.elapsed() < Duration::from_secs(5) {
+            std::thread::sleep(Duration::from_millis(16));
+            if due.lock().unwrap().is_none_or(|t| Instant::now() < t) {
+                continue;
+            }
+            *due.lock().unwrap() = None;
+            let _ = ctx.run_ui(Default::default(), |_| {});
+            let t = Instant::now();
+            for term in &mut terms {
+                term.glance();
+            }
+            glance_time += t.elapsed();
+            frames += 1;
+        }
+        eprintln!(
+            "PERF frames/s: {:.1}; glance: {:.2} ms per frame, {:.1} ms/s total",
+            frames as f64 / 5.0,
+            glance_time.as_secs_f64() * 1000.0 / frames.max(1) as f64,
+            glance_time.as_secs_f64() * 1000.0 / 5.0
+        );
+        drop(terms);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

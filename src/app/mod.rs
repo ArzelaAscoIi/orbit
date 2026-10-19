@@ -211,6 +211,15 @@ pub enum Action {
         /// Request changes instead of commenting.
         changes: bool,
     },
+    /// The user's own review from the Diff tab's Review menu: their summary
+    /// (required to request changes) plus any drafted line comments, as
+    /// one Comment or Request changes review at `head`. Only their click.
+    ReviewSummary {
+        url: String,
+        head: String,
+        body: String,
+        changes: bool,
+    },
     /// Marks a draft PR ready for review (`gh pr ready`).
     ReadyPr(String),
     /// A new empty tab in the strip (Cmd+N): For you, a shell or a ticket next.

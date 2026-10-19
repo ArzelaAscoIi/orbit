@@ -1358,38 +1358,19 @@ pub fn request_ai_review(url: &str, how: &crate::profile::AiReview) -> Result<()
     Ok(())
 }
 
-/// Posts the user's review: every draft as an inline comment, as a plain
+/// Posts the user's review: their summary and every draft as an inline comment, as a
 /// Comment review, bound to `head` and re-checked right before. Blocking.
 /// `changes`: a "Request changes" review instead of a comment.
-pub fn review(url: &str, head: &str, drafts: &[Draft], changes: bool) -> Result<()> {
+pub fn review(url: &str, head: &str, drafts: &[Draft], body: &str, changes: bool) -> Result<()> {
     if crate::read_only() {
         bail!("read-only: not commenting");
     }
-    if drafts.is_empty() {
-        bail!("no comments to post");
-    }
-    if drafts.iter().any(|d| command_like(&d.body)) {
-        bail!("a comment reads like a bot command; not posting it");
-    }
+    let request = review_request(head, drafts, body, changes)?;
     let (owner, repo, number) =
         parts(url).ok_or_else(|| anyhow!("not a GitHub pull request: {url}"))?;
     if gate(url)?.head != head {
         bail!("the PR got new commits; look again before commenting");
     }
-    // A JSON body: gh's -f/-F fields scramble arrays of objects when
-    // strings and numbers mix, and -F reads a body starting with @ as a file.
-    let comments: Vec<serde_json::Value> = drafts
-        .iter()
-        .map(
-            |d| serde_json::json!({"path": d.path, "line": d.line, "side": d.side, "body": d.body}),
-        )
-        .collect();
-    let body = serde_json::json!({
-        "commit_id": head,
-        "event": if changes { "REQUEST_CHANGES" } else { "COMMENT" },
-        "body": crate::profile::get().attribution.signed(""),
-        "comments": comments,
-    });
     crate::claude::gh_with(
         &[
             "api",
@@ -1401,9 +1382,45 @@ pub fn review(url: &str, head: &str, drafts: &[Draft], changes: bool) -> Result<
             "--input",
             "-",
         ],
-        Some(&body.to_string()),
+        Some(&request.to_string()),
     )?;
     Ok(())
+}
+
+/// The reviews API body: the line drafts and the user's summary, as one
+/// COMMENT or REQUEST_CHANGES review bound to `head`. Refused when there
+/// is nothing to say (request changes needs its reason written out), or
+/// when any text reads like a bot command.
+fn review_request(
+    head: &str,
+    drafts: &[Draft],
+    body: &str,
+    changes: bool,
+) -> Result<serde_json::Value> {
+    let body = body.trim();
+    if changes && body.is_empty() {
+        bail!("say what should change");
+    }
+    if drafts.is_empty() && body.is_empty() {
+        bail!("no comments to post");
+    }
+    if command_like(body) || drafts.iter().any(|d| command_like(&d.body)) {
+        bail!("a comment reads like a bot command; not posting it");
+    }
+    // A JSON body: gh's -f/-F fields scramble arrays of objects when
+    // strings and numbers mix, and -F reads a body starting with @ as a file.
+    let comments: Vec<serde_json::Value> = drafts
+        .iter()
+        .map(
+            |d| serde_json::json!({"path": d.path, "line": d.line, "side": d.side, "body": d.body}),
+        )
+        .collect();
+    Ok(serde_json::json!({
+        "commit_id": head,
+        "event": if changes { "REQUEST_CHANGES" } else { "COMMENT" },
+        "body": crate::profile::get().attribution.signed(body),
+        "comments": comments,
+    }))
 }
 
 /// Merges the PR only if its head is still `head`: squash-merged, or, where
@@ -1576,6 +1593,27 @@ pub fn parse(text: &str) -> Vec<File> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_review_says_something_and_is_bound_to_the_head() {
+        let draft = super::Draft {
+            path: "src/a.rs".into(),
+            line: 3,
+            side: "RIGHT".into(),
+            body: "why?".into(),
+        };
+        let r = super::review_request("abc123", &[], "Looks off here", true).unwrap();
+        assert_eq!(r["event"], "REQUEST_CHANGES");
+        assert_eq!(r["commit_id"], "abc123");
+        assert!(r["body"].as_str().unwrap().starts_with("Looks off here"));
+        let r = super::review_request("abc123", std::slice::from_ref(&draft), "", false).unwrap();
+        assert_eq!(r["event"], "COMMENT");
+        assert_eq!(r["comments"][0]["path"], "src/a.rs");
+        // Requesting changes needs the reason; a comment needs something.
+        assert!(super::review_request("abc123", std::slice::from_ref(&draft), " ", true).is_err());
+        assert!(super::review_request("abc123", &[], "  ", false).is_err());
+        assert!(super::review_request("abc123", &[], "@Robo Build!", false).is_err());
+    }
+
     #[test]
     fn the_bots_poller_is_named_as_repo_and_workflow() {
         assert_eq!(

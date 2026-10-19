@@ -212,8 +212,10 @@ impl App {
                         if let Some(head) = self.diff_heads.get(&url).cloned() {
                             self.remember_review(&url, head, comments);
                         }
-                        // The posted comments show as threads on their lines.
+                        // The posted comments show as threads on their lines,
+                        // and the review state (changes requested) on the gate.
                         self.send(Command::Talk { url: url.clone() });
+                        self.send(Command::Gate { url: url.clone() });
                         if let Some(issue_id) = fix {
                             let skill = crate::profile::get().skill("fixComments");
                             self.apply(

@@ -79,6 +79,7 @@ pub const GATES: &[(&str, Gate)] = &[
     ("Draft", Gate::Queue),
     ("DiscardDrafts", Gate::Queue),
     ("Review", Gate::Queue),
+    ("ReviewSummary", Gate::Yours),
     ("UpdateBranch", Gate::Queue),
     ("CancelAutoMerge", Gate::Queue),
     ("AiReview", Gate::Queue),

@@ -175,11 +175,13 @@ pub enum Command {
         head: String,
         how: crate::profile::AiReview,
     },
-    /// Posts the user's drafted comments as one review, bound to the head.
+    /// Posts the user's drafted comments, and their summary when written,
+    /// as one review, bound to the head.
     Review {
         url: String,
         head: String,
         drafts: Vec<crate::github::Draft>,
+        body: String,
         fix: Option<String>,
         changes: bool,
     },
@@ -733,13 +735,14 @@ async fn run(
                     url,
                     head,
                     drafts,
+                    body,
                     fix,
                     changes,
                 } => {
                     let u = url.clone();
                     Event::Reviewed {
                         result: tokio::task::spawn_blocking(move || {
-                            crate::github::review(&u, &head, &drafts, changes)
+                            crate::github::review(&u, &head, &drafts, &body, changes)
                         })
                         .await
                         .map_err(anyhow::Error::from)

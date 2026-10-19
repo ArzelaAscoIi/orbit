@@ -682,7 +682,30 @@ impl App {
                         url,
                         head,
                         drafts,
+                        body: String::new(),
                         fix,
+                        changes,
+                    });
+                }
+            }
+            Action::ReviewSummary {
+                url,
+                head,
+                body,
+                changes,
+            } => {
+                let drafts = self.drafts.get(&url).cloned().unwrap_or_default();
+                let empty = body.trim().is_empty();
+                if (changes && empty) || (empty && drafts.is_empty()) {
+                    return;
+                }
+                if self.reviewing.insert(url.clone()) {
+                    self.send(Command::Review {
+                        url,
+                        head,
+                        drafts,
+                        body,
+                        fix: None,
                         changes,
                     });
                 }

@@ -452,6 +452,20 @@ fn style(ctx: &egui::Context, p: &Palette) {
 /// a terminal program picks its colours for a dark background, and on
 /// Paper its greys would vanish.
 pub fn readable(fg: Color32, bg: Color32) -> Color32 {
+    // A terminal asks for every cell on every frame, from a few colours.
+    thread_local! {
+        static SEEN: std::cell::RefCell<std::collections::HashMap<(Color32, Color32), Color32>> =
+            Default::default();
+    }
+    SEEN.with(|seen| {
+        *seen
+            .borrow_mut()
+            .entry((fg, bg))
+            .or_insert_with(|| readable_uncached(fg, bg))
+    })
+}
+
+fn readable_uncached(fg: Color32, bg: Color32) -> Color32 {
     let far = if luminance(bg) > 0.18 {
         hex(0x111111)
     } else {
@@ -486,6 +500,18 @@ fn ratio(a: Color32, b: Color32) -> f32 {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn readable_is_the_same_from_its_cache() {
+        let (fg, bg) = (hex(0x777777), hex(0xe8e6e0));
+        assert_eq!(readable(fg, bg), readable_uncached(fg, bg));
+        assert_eq!(
+            readable(fg, bg),
+            readable_uncached(fg, bg),
+            "second call, cached"
+        );
+    }
+
     use super::*;
 
     #[test]

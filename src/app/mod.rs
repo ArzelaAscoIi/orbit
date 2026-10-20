@@ -968,6 +968,12 @@ pub struct App {
     kicked_at: Option<std::time::Instant>,
     /// Sub-tickets handed to the bot whose move Linear has not shown yet.
     pub dispatching: HashSet<String>,
+    /// A step sent to a ticket's session (Fix, Plan, Build…), by issue id:
+    /// when, so its button says "Fixing…" until the session works
+    /// (`started_state`).
+    pub started: HashMap<String, std::time::Instant>,
+    /// Drafts asked to be marked ready whose gate has not come back yet.
+    pub readying: HashSet<String>,
     /// Who may review, by `owner/repo` (Request review), asked once a run.
     pub reviewers: HashMap<String, Result<Vec<(String, String)>, String>>,
     reviewers_asked: HashSet<String>,
@@ -1260,6 +1266,8 @@ impl App {
             missions: crate::mission::load(),
             missions_at: None,
             dispatching: HashSet::new(),
+            started: HashMap::new(),
+            readying: HashSet::new(),
             kicked_at: None,
             front: false,
             chat_open: false,
@@ -2771,8 +2779,44 @@ pub fn repos_from<'a>(
     out
 }
 
+/// Where a step a button sent to a ticket's session is: the button says
+/// "Fixing…" while the session has not picked it up (`Waiting`, at most 30
+/// s), "working in its session" once it works, and "no answer yet" for a
+/// minute after that if it never did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Started {
+    Waiting,
+    Running,
+    NoAnswer,
+    Idle,
+}
+
+pub fn started_state(age: Option<std::time::Duration>, working: bool) -> Started {
+    use std::time::Duration;
+    match age {
+        _ if working => Started::Running,
+        Some(age) if age < Duration::from_secs(30) => Started::Waiting,
+        Some(age) if age < Duration::from_secs(90) => Started::NoAnswer,
+        _ => Started::Idle,
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_clicked_step_waits_then_runs_or_says_no_answer() {
+        use std::time::Duration;
+        let s = |secs: u64| Some(Duration::from_secs(secs));
+        // Just clicked: the button says "Fixing…" and a second click is ignored.
+        assert_eq!(super::started_state(s(2), false), super::Started::Waiting);
+        // The session picked it up: where it works.
+        assert_eq!(super::started_state(s(2), true), super::Started::Running);
+        // Never picked up: no answer yet, then back to normal.
+        assert_eq!(super::started_state(s(45), false), super::Started::NoAnswer);
+        assert_eq!(super::started_state(s(120), false), super::Started::Idle);
+        assert_eq!(super::started_state(None, false), super::Started::Idle);
+    }
+
     use super::*;
 
     #[test]

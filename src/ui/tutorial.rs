@@ -77,7 +77,7 @@ pub const STEPS: &[Step] = &[
          is doing (a spinner while it works, your turn, needs approval, PR opened, failed; also for \
          claude typed into a shell). \
          Cmd+1 to 9 switch windows, Cmd+Shift+] and [ step to the next or previous, + new or \
-         Cmd+N opens a new one: Enter starts Claude in it, T a shell, E a plain editor, B a browser (Cmd+F finds in its page), or file a ticket. Drag a row to reorder; right-click \
+         Cmd+N opens a new one: Enter starts Claude in it, T a shell, E a plain editor (line numbers, long lines scroll sideways), B a browser (Cmd+F finds in its page), or file a ticket. Drag a row to reorder; right-click \
          renames it or moves it up or down (Cmd+Shift+Up/Down for the current one); × or a \
          middle click closes it, its sessions keep running, and Cmd+Z reopens it (again for the one before); once every ticket in it is done it \
          reads \"done ×\"; otherwise it says your next move on its ticket in the same place \

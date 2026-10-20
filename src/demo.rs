@@ -286,10 +286,20 @@ fn gate(url: &str) -> crate::github::Gate {
             gate.author = "acme-bot[bot]".into();
             gate.author_bot = true;
             gate.head_branch = format!("robo/{number}");
+            // The second bot PR also has review threads and a red check:
+            // Approve leads, Fix beside it.
+            if u.ends_with("/322") {
+                gate.open_threads = 2;
+                gate.checks = "FAILURE".into();
+                gate.why = "a check failed".into();
+            }
         }
         u if u.ends_with("/211") => {
-            gate.author = "alex-kim".into();
-            gate.head_branch = "alex/reports-index".into();
+            // The user's own draft: Mark ready leads.
+            gate.author = "sam-lee".into();
+            gate.own = true;
+            gate.draft = true;
+            gate.head_branch = "sam/reports-index".into();
             gate.on_it = vec!["@jo requested".into()];
         }
         _ => {

@@ -447,7 +447,8 @@ pub const STEPS: &[Step] = &[
         Some("request-review"),
         None,
         "Request review",
-        "Request review next to a PR's buttons opens a field right there: type part of a name \
+        "Request review (under More, or the filled button on your own PR) opens a field beside \
+         the buttons: type part of a name \
          or login and pick the person, only people who may review on that repo are offered, \
          so GitHub never refuses one. Roulette (when the profile names a router's label) adds \
          that label instead, and the router picks a reviewer.",
@@ -468,9 +469,9 @@ pub const STEPS: &[Step] = &[
         Some("preview"),
         None,
         "Preview",
-        "On a PR in a repo that deploys previews (the profile names which), a Preview button \
-         per kind of preview adds its label (a UI-only one, a full one, as the profile lists \
-         them), and the repo's workflow deploys it. Hover a button to see what it deploys.",
+        "On a PR in a repo that deploys previews (the profile names which), Preview ▾ lists \
+         each kind of preview (a UI-only one, a full one, as the profile lists them); a pick \
+         adds its label and the repo's workflow deploys it. Hover one to see what it deploys.",
     ),
     step(
         Some("batch-review"),
@@ -637,10 +638,11 @@ pub const STEPS: &[Step] = &[
     step(
         Some("fix-comments"),
         None,
-        "Fix comments",
-        "When a PR has unresolved review threads, Fix N comments runs \
-         {fix} on it in the ticket's Claude session: it fixes each thread, \
-         pushes, replies and resolves it. No more copying the PR link by hand.",
+        "Fix",
+        "One Fix button for whatever blocks a PR: open review threads, red CI, changes asked \
+         for, conflicts, a merge-queue drop. It says what it covers (Fix · 3 comments · CI) \
+         and runs in the ticket's Claude session; comments alone run {fix}, which fixes, \
+         replies and resolves each thread. Its ▼ runs one part alone.",
     ),
     step(
         Some("yolo"),
@@ -662,9 +664,9 @@ pub const STEPS: &[Step] = &[
     step(
         Some("fix-queue"),
         None,
-        "Fix failing MQ",
+        "Fix a merge-queue drop",
         "When a PR was taken out of the merge queue last time (a failure or by hand) and \
-         nothing was committed since, Fix failing MQ shows next to its buttons. It runs in the \
+         nothing was committed since, Fix says merge queue. It runs in the \
          ticket's Claude session: finds the queue's failed run for this PR, reads the failed \
          jobs, fixes the cause on the PR's branch and pushes, or says it was a flake. Queuing it \
          again stays your click.",
@@ -838,7 +840,7 @@ pub const STEPS: &[Step] = &[
         Some("close-pr"),
         None,
         "Close a PR",
-        "Close PR beside the PR's buttons: close just the PR, or, when a ticket is behind it, \
+        "Close sits under More, last and in red: close just the PR, or, when a ticket is behind it, \
          close it and cancel the ticket in Linear too. Closed shows at once; GitHub can reopen \
          it.",
     ),

@@ -266,9 +266,12 @@ pub fn follow(ctx: &egui::Context, choice: Choice) {
 }
 
 /// Geist for text, Geist Mono for metadata. egui's own fonts stay behind
-/// them for the glyphs Geist lacks (✳ ↗ ■ ▲ ⟳).
+/// them for the glyphs Geist lacks (✳ ↗ ■ ▲ ⟳), and Phosphor's icons
+/// (`crate::ui::widgets::icon`) for buttons.
 pub fn fonts(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
+    // Phosphor icons (one family) behind the text fonts, for buttons.
+    egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
     for (name, bytes) in [
         (
             "geist",
@@ -300,6 +303,7 @@ pub fn fonts(ctx: &egui::Context) {
     fonts.families.insert(semibold(), family("geist-semibold"));
     let mono = &mut fonts.families.get_mut(&FontFamily::Monospace).unwrap();
     mono.insert(0, "geist-mono".into());
+    mono.push("phosphor".into());
     ctx.set_fonts(fonts);
 }
 
@@ -493,6 +497,17 @@ fn luminance(c: Color32) -> f32 {
     0.2126 * lin(c.r()) + 0.7152 * lin(c.g()) + 0.0722 * lin(c.b())
 }
 
+/// The text colour for a button filled with `fill` (an intent's colour:
+/// success, signal): the palette's background, text or button text,
+/// whichever reads best.
+pub fn on_fill(fill: Color32) -> Color32 {
+    let pal = p();
+    [pal.bg, pal.text, pal.on_btn]
+        .into_iter()
+        .max_by(|a, b| ratio(*a, fill).total_cmp(&ratio(*b, fill)))
+        .unwrap_or(pal.text)
+}
+
 fn ratio(a: Color32, b: Color32) -> f32 {
     let (a, b) = (luminance(a), luminance(b));
     (a.max(b) + 0.05) / (a.min(b) + 0.05)
@@ -537,6 +552,15 @@ mod tests {
             }
             assert!(ratio(p.on_btn, p.btn) >= 4.5);
             assert!(ratio(p.diff_text, p.diff_bg) >= 4.5);
+            // The PR buttons filled by intent (Approve, Merge: success;
+            // Fix: signal) read with the background or the text on them.
+            for fill in [p.success, p.signal] {
+                let best = [p.bg, p.text, p.on_btn]
+                    .into_iter()
+                    .map(|c| ratio(c, fill))
+                    .fold(0.0, f32::max);
+                assert!(best >= 4.5, "nothing reads on {fill:?}");
+            }
         }
     }
 

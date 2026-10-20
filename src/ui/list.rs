@@ -1453,7 +1453,7 @@ fn batch(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 let title = batch_title(&pr.repo, &card.issue.title);
                 ui.add(egui::Label::new(RichText::new(title).family(medium())).truncate());
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    super::ticket::approve(app, pr, ui, actions);
+                    super::ticket::approve(app, pr, None, ui, actions);
                     if ui
                         .button("Diff")
                         .on_hover_text("Opens its diff in a pane")

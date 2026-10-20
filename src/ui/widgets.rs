@@ -767,6 +767,21 @@ impl Intent {
 
 /// A PR action: a Phosphor `icon` (`egui_phosphor::regular`), then `text`
 /// (none: an icon button). `lead`: the one filled button of the row.
+/// A button's place while what it started is on its way: a spinner and
+/// "Approving…", not clickable, so a click always shows it was taken.
+pub(super) fn pending(ui: &mut Ui, text: &str) -> egui::Response {
+    egui::Frame::new()
+        .stroke(Stroke::new(1.0, p().line_2))
+        .inner_margin(egui::Margin::symmetric(8, 4))
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.add(egui::Spinner::new().size(12.0).color(p().signal));
+                ui.label(RichText::new(format!("{text}…")).color(p().text_2));
+            });
+        })
+        .response
+}
+
 pub(super) fn action(
     ui: &mut Ui,
     icon: &str,

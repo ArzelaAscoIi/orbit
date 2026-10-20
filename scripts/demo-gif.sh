@@ -18,7 +18,7 @@ for _try in 1 2 3; do
   rm -rf "$data" "$out" && mkdir -p "$data" "$out"
   echo '{"teams": ["WEB", "API"], "profile": "acme", "notifications": false}' > "$data/settings.json"
   ORBIT_DEMO=1 ORBIT_NO_KEYCHAIN=1 ORBIT_DATA="$data" \
-    ORBIT_SIZE=1440x900 ORBIT_SIMULATE="$steps" ORBIT_SIM_OUT="$out" \
+    ORBIT_SIZE=${ORBIT_SIZE:-1440x900} ORBIT_SIMULATE="$steps" ORBIT_SIM_OUT="$out" \
     target/release/orbit &
   pid=$!
   for _ in $(seq 1 240); do

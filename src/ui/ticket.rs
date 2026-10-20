@@ -808,7 +808,7 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                         live,
                     ) {
                         ui.add_space(6.0);
-                        ui.label(label(&note));
+                        ui.label(super::widgets::label(&note));
                     }
                 });
         });
@@ -1323,6 +1323,10 @@ fn ready_pr(app: &App, pr: &story::Pr, lead: Option<Lead>, ui: &mut Ui, actions:
     if app.pr_state(pr) != story::PrState::Draft {
         return;
     }
+    if app.readying.contains(&pr.url) {
+        pending(ui, "Marking ready");
+        return;
+    }
     let filled = lead == Some(Lead::MarkReady);
     if action(ui, icon::GIT_PULL_REQUEST, "Mark ready", Intent::Go, filled)
         .on_hover_text("Marks the draft ready for review on GitHub")
@@ -1339,7 +1343,7 @@ pub(super) fn update_branch(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mu
         return;
     };
     if app.updating.get(&pr.url) == Some(&gate.head) {
-        ui.label(label("updating branch…"));
+        pending(ui, "Updating branch");
         return;
     }
     if !pr.open || gate.branch != "BEHIND" {
@@ -1480,7 +1484,7 @@ pub(super) fn approve(
         return;
     }
     if app.approving.contains(&pr.url) {
-        ui.label(label("approving…"));
+        pending(ui, "Approving");
         return;
     }
     let short = &gate.head[..7.min(gate.head.len())];
@@ -1523,6 +1527,10 @@ fn ai_review(
     ui: &mut Ui,
     actions: &mut Vec<Action>,
 ) {
+    if app.ai_asking.contains(&pr.url) {
+        pending(ui, "Requesting AI review");
+        return;
+    }
     let how = crate::profile::get().github.ai_review.how();
     let approved = app.pr_state(pr) == story::PrState::Approved;
     let Some(how) = how.filter(|_| !approved) else {
@@ -1856,6 +1864,7 @@ pub(super) fn merge(
         return;
     }
     if app.merging.contains(&pr.url) {
+        pending(ui, "Merging");
         return;
     }
     let gate = match app.gates.get(&pr.url) {
@@ -2084,6 +2093,20 @@ fn step_button(
     let hint = hint.replace("Claude session", &format!("{} session", agent.short()));
     // Button and chevron touch, in this row (a nested row sits lower than
     // its neighbours).
+    // A click always shows it was taken: "Fixing…" until the session
+    // works, then where it works (crate::app::started_state).
+    let working = app
+        .claude
+        .live_of(&card.issue.id)
+        .is_some_and(|l| matches!(l.label(), "working" | "starting"));
+    let age = app.started.get(&card.issue.id).map(|at| at.elapsed());
+    let state = crate::app::started_state(age, working);
+    if state == crate::app::Started::Waiting {
+        let rect = pending(ui, &pending_verb(label)).rect;
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_secs(1));
+        return rect;
+    }
     let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
     let button = match lead {
         Some(intent) => session_lead(ui, agent, label, intent),
@@ -2142,7 +2165,41 @@ fn step_button(
     }
     ui.spacing_mut().item_spacing.x = spacing;
     ui.add_space(spacing);
+    // One short link to the session: where it works, or that it did not answer.
+    let note = match state {
+        crate::app::Started::Running => Some(("working · open", p().success)),
+        crate::app::Started::NoAnswer => Some(("no answer yet · open", p().signal)),
+        _ => None,
+    };
+    if let Some((note, color)) = note
+        && link(ui, super::widgets::label(note).color(color).underline())
+            .on_hover_text(format!("Opens the ticket's {} session", agent.short()))
+            .clicked()
+    {
+        actions.push(Action::Claude(card.issue.id.clone()));
+    }
     rect
+}
+
+/// What a session step's button says while it is on its way: "Fix · 3
+/// comments" → "Fixing", "Plan" → "Planning".
+fn pending_verb(label: &str) -> String {
+    let word = label
+        .trim_start_matches(|c: char| !c.is_alphabetic())
+        .split([' ', '·'])
+        .next()
+        .unwrap_or_default();
+    match word {
+        "Fix" => "Fixing",
+        "Plan" => "Planning",
+        "Re-plan" => "Re-planning",
+        "Build" => "Building",
+        "Triage" => "Triaging",
+        "Investigate" => "Investigating",
+        "Resume" => "Resuming",
+        _ => "Starting",
+    }
+    .to_owned()
 }
 
 /// Under a step's ▼ when the profile has no command for the bot
@@ -2597,6 +2654,14 @@ fn composer(draft: &mut String, ui: &mut Ui, actions: &mut Vec<Action>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_session_step_says_what_it_does_while_on_its_way() {
+        assert_eq!(super::pending_verb("✳ Fix · 2 comments · CI"), "Fixing");
+        assert_eq!(super::pending_verb("Plan"), "Planning");
+        assert_eq!(super::pending_verb("✳ Investigate"), "Investigating");
+        assert_eq!(super::pending_verb("Work on it with Claude"), "Starting");
+    }
+
     #[test]
     fn the_remote_hint_shows_only_where_no_command_is_set() {
         use crate::story::BotCommand;

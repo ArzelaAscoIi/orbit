@@ -726,6 +726,139 @@ pub(super) fn primary(ui: &mut Ui, label: &str) -> egui::Response {
     hover_hand(&ui.add(button))
 }
 
+/// What a PR action does, for how it looks: the one step that moves the
+/// PR on is filled in its colour, the rest are outlined with the icon in
+/// that colour.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum Intent {
+    /// Moves the PR on (Mark ready, ask for a review): the primary colour.
+    Go,
+    /// Approve, merge.
+    Good,
+    /// Fix what blocks it.
+    Fix,
+    /// Ends something (Close PR): red.
+    Danger,
+    /// Everything else.
+    Plain,
+}
+
+impl Intent {
+    /// The fill of the lead button, and its text.
+    fn fill(self) -> (Color32, Color32) {
+        match self {
+            Intent::Good => (p().success, crate::theme::on_fill(p().success)),
+            Intent::Fix => (p().signal, crate::theme::on_fill(p().signal)),
+            _ => (p().btn, p().on_btn),
+        }
+    }
+
+    /// The icon of an outlined button.
+    fn tint(self) -> Color32 {
+        match self {
+            Intent::Go => p().text,
+            Intent::Good => p().success,
+            Intent::Fix => p().signal,
+            Intent::Danger => p().danger,
+            Intent::Plain => p().text_2,
+        }
+    }
+}
+
+/// A PR action: a Phosphor `icon` (`egui_phosphor::regular`), then `text`
+/// (none: an icon button). `lead`: the one filled button of the row.
+pub(super) fn action(
+    ui: &mut Ui,
+    icon: &str,
+    text: &str,
+    intent: Intent,
+    lead: bool,
+) -> egui::Response {
+    let button = if lead {
+        let (fill, color) = intent.fill();
+        let label = format!("{icon}  {text}");
+        egui::Button::new(
+            RichText::new(label.trim_end())
+                .family(medium())
+                .color(color),
+        )
+        .fill(fill)
+        .stroke(Stroke::NONE)
+    } else {
+        let text_color = match intent {
+            Intent::Danger => p().danger,
+            _ => p().text,
+        };
+        let mut job = egui::text::LayoutJob::default();
+        let (style, font) = (ui.style().clone(), egui::FontSelection::Default);
+        RichText::new(icon).color(intent.tint()).append_to(
+            &mut job,
+            &style,
+            font.clone(),
+            Align::Center,
+        );
+        if !text.is_empty() {
+            RichText::new(format!("  {text}"))
+                .color(text_color)
+                .append_to(&mut job, &style, font, Align::Center);
+        }
+        egui::Button::new(job)
+    };
+    hover_hand(&ui.add(button))
+}
+
+/// An action with a menu under it (More, Preview): the button opens it.
+pub(super) fn action_menu(
+    ui: &mut Ui,
+    icon: &str,
+    text: &str,
+    hint: &str,
+    menu: impl FnOnce(&mut Ui),
+) -> egui::Response {
+    let response = action(ui, icon, text, Intent::Plain, false).on_hover_text(hint);
+    egui::Popup::menu(&response).show(menu);
+    response
+}
+
+/// The ticket session's button filled as the row's lead (Fix): the
+/// agent's mark in the fill's text colour.
+pub(super) fn session_lead(
+    ui: &mut Ui,
+    agent: crate::claude::Agent,
+    text: &str,
+    intent: Intent,
+) -> egui::Response {
+    let text = text.strip_prefix("✳ ").unwrap_or(text);
+    let (fill, color) = intent.fill();
+    let icon = agent_icon(ui, agent).tint(color);
+    let text = RichText::new(text).family(medium()).color(color);
+    let button = egui::Button::image_and_text(icon, text)
+        .fill(fill)
+        .stroke(Stroke::NONE);
+    hover_hand(&ui.add(button))
+}
+
+/// Copy as an icon: the URL to the clipboard, a check for two seconds.
+pub(super) fn copy_icon(ui: &mut Ui, url: &str) -> egui::Response {
+    use egui_phosphor::regular::{CHECK, COPY};
+    let id = egui::Id::new(("copied", url));
+    let now = ui.input(|i| i.time);
+    let copied = ui
+        .data(|d| d.get_temp::<f64>(id))
+        .is_some_and(|at| now - at < 2.0);
+    let icon = if copied { CHECK } else { COPY };
+    let button = action(ui, icon, "", Intent::Plain, false).on_hover_text(format!("Copies {url}"));
+    if button.clicked() {
+        ui.ctx().copy_text(url.to_owned());
+        ui.data_mut(|d| d.insert_temp(id, now));
+    }
+    if copied {
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(500));
+    }
+    button
+}
+
 /// A primary button that starts a session with `agent`, its mark first.
 pub(super) fn agent_primary(
     ui: &mut Ui,

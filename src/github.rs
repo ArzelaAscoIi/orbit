@@ -331,15 +331,6 @@ pub fn needs_fix(gate: &Gate) -> bool {
         || gate.branch == "DIRTY"
 }
 
-/// Only its checks fail: no open threads, no changes asked for, no
-/// conflicts. Fix then fixes CI and nothing else.
-pub fn only_ci(gate: &Gate) -> bool {
-    matches!(gate.checks.as_str(), "FAILURE" | "ERROR")
-        && gate.open_threads == 0
-        && gate.review != "CHANGES_REQUESTED"
-        && gate.branch != "DIRTY"
-}
-
 /// The GitHub login of the org member with this name (Linear knows only
 /// names): the org's members, 100 a page, matched without case. `None`
 /// when nobody or more than one has the name. Blocking; off the UI thread.
@@ -2005,17 +1996,6 @@ mod tests {
         assert!(needs_fix(&gate(0, "FAILURE", "", "CLEAN")));
         assert!(needs_fix(&gate(0, "SUCCESS", "CHANGES_REQUESTED", "CLEAN")));
         assert!(needs_fix(&gate(0, "SUCCESS", "", "DIRTY")));
-        // Approved with red checks and nothing else: Fix CI only.
-        assert!(only_ci(&gate(0, "FAILURE", "APPROVED", "BLOCKED")));
-        assert!(!only_ci(&gate(1, "FAILURE", "APPROVED", "BLOCKED")));
-        assert!(!only_ci(&gate(
-            0,
-            "FAILURE",
-            "CHANGES_REQUESTED",
-            "BLOCKED"
-        )));
-        assert!(!only_ci(&gate(0, "FAILURE", "", "DIRTY")));
-        assert!(!only_ci(&gate(0, "SUCCESS", "", "CLEAN")));
     }
 
     /// The gate query against a real PR through the user's gh login.

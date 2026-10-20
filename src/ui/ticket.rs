@@ -660,25 +660,15 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                         if closes_here(card, app.is_mine(card)) {
                             mark_done(app, card, "Mark done", ui, actions);
                         }
+                        // Several PRs: one Fix for what blocks any of them (one
+                        // PR has it among its buttons).
+                        if many {
+                            fix_button(app, card, false, ui, actions);
+                        }
                         // The bot's step: here in this ticket's Claude session, or,
                         // where the profile names the bot's command for it, remotely.
-                        // Fix only with something to fix; else the Claude tab.
-                        let open_gates = || {
-                            card.prs
-                                .iter()
-                                .filter(|pr| pr.open)
-                                .filter_map(|pr| app.gates.get(&pr.url))
-                        };
-                        let step = skill_step(card).filter(|_| {
-                            card.stage != Stage::Review
-                                || open_gates()
-                                    .any(|g| g.as_ref().map_or(true, crate::github::needs_fix))
-                        });
-                        // Only CI is red: Fix fixes CI and nothing else.
-                        let ci = card.stage == Stage::Review
-                            && open_gates().count() > 0
-                            && open_gates().all(|g| g.as_ref().is_ok_and(crate::github::only_ci));
-                        let step = step.map(|s| if ci { fix_ci(s) } else { s });
+                        // In review, Fix is the step: among the PR's buttons.
+                        let step = skill_step(card).filter(|_| card.stage != Stage::Review);
                         if let Some((label, hint, command, submit)) = step {
                             let local = Action::RunSkill {
                                 issue_id: card.issue.id.clone(),
@@ -692,6 +682,8 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                                 &hint,
                                 local,
                                 remote_step(card),
+                                None,
+                                Vec::new(),
                                 ui,
                                 actions,
                             );
@@ -711,6 +703,8 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                                 &hint,
                                 local,
                                 Some(story::BotCommand::Plan),
+                                None,
+                                Vec::new(),
                                 ui,
                                 actions,
                             );
@@ -724,6 +718,8 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                                 &hint,
                                 local,
                                 Some(story::BotCommand::Investigate),
+                                None,
+                                Vec::new(),
                                 ui,
                                 actions,
                             );
@@ -888,6 +884,7 @@ fn pr_buttons(
     ui: &mut Ui,
     actions: &mut Vec<Action>,
 ) {
+    use egui_phosphor::regular as icon;
     let state = app.pr_state(pr);
     if with_state {
         state_column(app, pr, ui);
@@ -899,39 +896,202 @@ fn pr_buttons(
         }
         return;
     }
-    let label = format!("Open PR {} ↗", pr.name());
-    let button = if card.prs.len() == 1 && card.ask == Some(Ask::Review) && pr.waiting() {
-        primary(ui, &label)
+    // One PR on the card: what it needs next is the one filled button,
+    // first in the row. Several share one look (`lead_of`).
+    let one = card.prs.len() == 1;
+    let lead = if one { lead_of(app, pr) } else { None };
+    if one && lead == Some(Lead::Fix) {
+        fix_button(app, card, true, ui, actions);
+    }
+    ready_pr(app, pr, lead, ui, actions);
+    approve(app, pr, lead, ui, actions);
+    merge(app, pr, lead, ui, actions);
+    if lead == Some(Lead::RequestReview) && !review_open(&pr.url, ui) {
+        let button = action(ui, icon::USER_PLUS, "Request review", Intent::Go, true)
+            .on_hover_text("Your PR has no approval yet: ask someone on GitHub to review it");
+        if button.clicked() {
+            open_review(pr, ui, actions);
+        }
+    }
+    if one && lead != Some(Lead::Fix) {
+        fix_button(app, card, false, ui, actions);
+    }
+    update_branch(app, pr, ui, actions);
+    land_it(app, pr, ui, actions);
+    request_reporter(app, card, pr, ui, actions);
+    preview(app, pr, ui, actions);
+    review_form(app, pr, ui, actions);
+    // The PR itself, quieter: open it, copy its link, ask GitHub again.
+    let lead_pr = card.pr(None).is_some_and(|lead| lead.url == pr.url);
+    let hint = if lead_pr {
+        "Open the PR on GitHub (key: o)"
     } else {
-        ui.button(label)
+        "Open the PR on GitHub"
     };
-    let lead = card.pr(None).is_some_and(|lead| lead.url == pr.url);
-    let hint = if lead {
-        "Open the PR (key: o)"
-    } else {
-        "Open the PR"
-    };
-    if button.on_hover_text(hint).clicked() {
+    if action(ui, icon::ARROW_SQUARE_OUT, &pr.name(), Intent::Plain, false)
+        .on_hover_text(hint)
+        .clicked()
+    {
         actions.push(Action::Open(pr.url.clone()));
     }
-    copy_link(ui, &pr.url);
-    let refresh = link(ui, super::widgets::label("↻"))
+    copy_icon(ui, &pr.url);
+    let refresh = action(ui, icon::ARROWS_CLOCKWISE, "", Intent::Plain, false)
         .on_hover_text("Ask GitHub again now: merged, queued, checks, reviews");
     mark(app, ui, "refresh-gate", refresh.rect);
     if refresh.clicked() {
         actions.push(Action::RefreshGate(pr.url.clone()));
     }
-    approve(app, pr, ui, actions);
-    merge(app, pr, ui, actions);
-    update_branch(app, pr, ui, actions);
-    fix_comments(app, card, pr, ui, actions);
-    fix_queue(app, card, pr, ui, actions);
-    land_it(app, pr, ui, actions);
-    request_reporter(app, card, pr, ui, actions);
-    ready_pr(app, pr, ui, actions);
-    ask_review(app, pr, ui, actions);
-    preview(app, pr, ui, actions);
-    close_pr(app, card, pr, ui, actions);
+    more(app, card, pr, lead, ui, actions);
+}
+
+/// What a PR's row fills: the one step it needs from the user next.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum Lead {
+    MarkReady,
+    Merge,
+    Approve,
+    Fix,
+    AiReview,
+    RequestReview,
+}
+
+/// A draft can only become ready; then what ends it (Merge), what the
+/// user is asked for (Approve), what blocks it (Fix), and on the user's
+/// own PR without approval, asking for a review (`ai`: the profile asks
+/// for an AI review, not yet at this head).
+fn lead(gate: &crate::github::Gate, ai: bool) -> Option<Lead> {
+    if gate.state != "OPEN" || gate.queued {
+        return None;
+    }
+    if gate.draft {
+        return Some(Lead::MarkReady);
+    }
+    if (gate.green || gate.can_auto_merge) && !gate.auto_merge {
+        return Some(Lead::Merge);
+    }
+    if gate.can_approve {
+        return Some(Lead::Approve);
+    }
+    if crate::github::needs_fix(gate) || !gate.queue_failed.is_empty() {
+        return Some(Lead::Fix);
+    }
+    if gate.own && gate.review != "APPROVED" {
+        return Some(if ai {
+            Lead::AiReview
+        } else {
+            Lead::RequestReview
+        });
+    }
+    None
+}
+
+/// `lead` for a PR, from what GitHub said last.
+pub(super) fn lead_of(app: &App, pr: &story::Pr) -> Option<Lead> {
+    let Some(Ok(gate)) = app.gates.get(&pr.url) else {
+        return None;
+    };
+    if !pr.open {
+        return None;
+    }
+    let ai = crate::profile::get().github.ai_review.how().is_some()
+        && app.ai_reviews.get(&pr.url) != Some(&gate.head);
+    lead(gate, ai)
+}
+
+/// More ▾: what a PR needs now and then: someone's review, the review
+/// router, and closing it (last, in red).
+fn more(
+    app: &App,
+    card: &Card,
+    pr: &story::Pr,
+    lead: Option<Lead>,
+    ui: &mut Ui,
+    actions: &mut Vec<Action>,
+) {
+    use egui_phosphor::regular as icon;
+    // What GitHub says now, not what the card was built with: a merged or
+    // closed PR has nothing to close, nor a review to ask for.
+    let state = app.pr_state(pr);
+    let open = matches!(
+        state,
+        story::PrState::Open | story::PrState::Approved | story::PrState::Draft
+    );
+    if !open {
+        return;
+    }
+    let can_ask = matches!(state, story::PrState::Open | story::PrState::Draft)
+        && lead != Some(Lead::RequestReview)
+        && !review_open(&pr.url, ui);
+    let roulette = crate::profile::get().github.review_roulette.clone();
+    let rolled = app.labeled.contains(&(pr.url.clone(), roulette.clone()));
+    let canceled = (!card.pr_only())
+        .then(|| app.states.get(&card.issue.team.id))
+        .flatten()
+        .and_then(|states| story::canceled_state(states))
+        .filter(|s| s.id != card.issue.state.id);
+    let menu = action_menu(
+        ui,
+        icon::DOTS_THREE,
+        "More",
+        "Request a review, close the PR",
+        |ui| {
+            if can_ask
+                && ui
+                    .button(format!("{}  Request review…", icon::USER_PLUS))
+                    .on_hover_text(
+                        "Ask someone on GitHub to review it: a field opens beside the buttons",
+                    )
+                    .clicked()
+            {
+                open_review(pr, ui, actions);
+                ui.close();
+            }
+            if can_ask && !roulette.is_empty() && !rolled {
+                let hint = format!("Adds the {roulette} label: the review router picks a reviewer");
+                if ui
+                    .button(format!("{}  Review roulette", icon::SHUFFLE))
+                    .on_hover_text(hint)
+                    .clicked()
+                {
+                    actions.push(Action::AddLabel {
+                        url: pr.url.clone(),
+                        label: roulette.clone(),
+                    });
+                    ui.close();
+                }
+            }
+            if can_ask {
+                ui.separator();
+            }
+            let close = |cancel| Action::ClosePr {
+                url: pr.url.clone(),
+                cancel,
+            };
+
+            if action(ui, icon::X_CIRCLE, "Close the PR", Intent::Danger, false)
+                .on_hover_text("Closes it on GitHub without merging; it can be reopened there")
+                .clicked()
+            {
+                actions.push(close(None));
+                ui.close();
+            }
+            if let Some(state) = &canceled {
+                let text = format!("Close the PR and cancel {}", card.issue.identifier);
+                let hover = format!("Also moves the ticket to {} in Linear", state.name);
+                if action(ui, icon::X_CIRCLE, &text, Intent::Danger, false)
+                    .on_hover_text(hover)
+                    .clicked()
+                {
+                    actions.push(close(Some((card.issue.id.clone(), state.id.clone()))));
+                    ui.close();
+                }
+            }
+        },
+    );
+    mark(app, ui, "close-pr", menu.rect);
+    if can_ask {
+        mark(app, ui, "request-review", menu.rect);
+    }
 }
 
 /// Request review from the person who filed the ticket: they know best
@@ -965,7 +1125,8 @@ fn request_reporter(
         ui.label(label(&format!("review requested from {first}")));
         return;
     }
-    let button = hover_hand(&ui.button(format!("Request review from {first}"))).on_hover_text(
+    let text = format!("Request review from {first}");
+    let button = action(ui, egui_phosphor::regular::USER_PLUS, &text, Intent::Plain, false).on_hover_text(
         format!("{name} filed the ticket and can tell best whether it is fixed: asks @{login} to review the PR on GitHub"),
     );
     mark(app, ui, "request-reporter", button.rect);
@@ -988,7 +1149,8 @@ fn land_it(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
     if !crate::github::landable(gate) {
         return;
     }
-    let button = hover_hand(&ui.button("◎ Land it")).on_hover_text(
+    let land = egui_phosphor::regular::ROCKET_LAUNCH;
+    let button = action(ui, land, "Land it", Intent::Good, false).on_hover_text(
         "Starts a landing session that keeps at it until the PR is merged: it re-runs flaky \
          checks, fixes real failures, updates the branch, and merges through GitHub once the \
          PR is approved and green. It never approves or force-merges.",
@@ -999,11 +1161,10 @@ fn land_it(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
     }
 }
 
-/// Close PR: just the PR, or, when a ticket is behind it, the ticket
-/// canceled too. A menu, so it is never one stray click.
-/// Preview: the profile's preview labels on an open PR in a repo that
-/// deploys previews, a button each (e.g. Preview UI, Preview full).
+/// Preview ▾: the profile's preview labels on an open PR in a repo that
+/// deploys previews, an item each (e.g. Preview UI, Preview full).
 pub(super) fn preview(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
+    use egui_phosphor::regular as icon;
     if !matches!(
         app.pr_state(pr),
         story::PrState::Open | story::PrState::Draft
@@ -1011,29 +1172,54 @@ pub(super) fn preview(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<
         return;
     }
     let labels = crate::profile::get().github.preview.labels_for(&pr.repo);
-    for (i, kind) in labels.iter().enumerate() {
-        if app.labeled.contains(&(pr.url.clone(), kind.label.clone())) {
-            ui.label(label(&format!("✓ {} asked", kind.label)));
-            continue;
-        }
-        let button = ui
-            .button(&kind.button)
-            .on_hover_text(format!("Adds the {} label: {}", kind.label, kind.hint));
-        if i == 0 {
-            mark(app, ui, "preview", button.rect);
-        }
-        if button.clicked() {
-            actions.push(Action::AddLabel {
-                url: pr.url.clone(),
-                label: kind.label.clone(),
-            });
-        }
+    if labels.is_empty() {
+        return;
     }
+    let menu = action_menu(
+        ui,
+        icon::EYE,
+        "Preview",
+        "Deploy a preview of this PR",
+        |ui| {
+            for kind in &labels {
+                if app.labeled.contains(&(pr.url.clone(), kind.label.clone())) {
+                    ui.label(label(&format!("{}  {} asked", icon::CHECK, kind.button)));
+                    continue;
+                }
+                if ui
+                    .button(&kind.button)
+                    .on_hover_text(format!("Adds the {} label: {}", kind.label, kind.hint))
+                    .clicked()
+                {
+                    actions.push(Action::AddLabel {
+                        url: pr.url.clone(),
+                        label: kind.label.clone(),
+                    });
+                    ui.close();
+                }
+            }
+        },
+    );
+    mark(app, ui, "preview", menu.rect);
 }
 
-/// Request review: someone by their GitHub login, or the profile's review
-/// router by its label (e.g. a review roulette picks a reviewer).
-fn ask_review(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
+/// Whether the request-review field is open for `url` (one id for the
+/// whole window: More's popup and the row share it).
+fn review_open(url: &str, ui: &Ui) -> bool {
+    ui.data(|d| d.get_temp(egui::Id::new(("review-open", url))))
+        .unwrap_or(false)
+}
+
+/// Opens the request-review field beside the buttons (from More, or the
+/// lead on the user's own PR) and loads who may review on the repo.
+fn open_review(pr: &story::Pr, ui: &Ui, actions: &mut Vec<Action>) {
+    ui.data_mut(|d| d.insert_temp(egui::Id::new(("review-open", &pr.url)), true));
+    actions.push(Action::LoadReviewers(format!("{}/{}", pr.owner, pr.repo)));
+}
+
+/// The request-review field, while open: someone by their GitHub login, or
+/// the review router's label (Roulette); who was asked, after.
+fn review_form(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
     if !matches!(
         app.pr_state(pr),
         story::PrState::Open | story::PrState::Draft
@@ -1049,19 +1235,9 @@ fn ask_review(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>)
         .map(|(_, login)| login.as_str())
         .collect();
     // Inline, not in a popup menu: a text field in a popup lost the keys.
-    let open_id = ui.make_persistent_id(("review-open", &pr.url));
-    let login_id = ui.make_persistent_id(("review-login", &pr.url));
-    let open: bool = ui.data(|d| d.get_temp(open_id)).unwrap_or(false);
-    if !open {
-        let button = ui.button("Request review").on_hover_text(
-            "Ask someone on GitHub to review it: their login, or the review roulette",
-        );
-        mark(app, ui, "request-review", button.rect);
-        if button.clicked() {
-            ui.data_mut(|d| d.insert_temp(open_id, true));
-            actions.push(Action::LoadReviewers(format!("{}/{}", pr.owner, pr.repo)));
-        }
-    } else {
+    let open_id = egui::Id::new(("review-open", &pr.url));
+    let login_id = egui::Id::new(("review-login", &pr.url));
+    if review_open(&pr.url, ui) {
         let mut login: String = ui.data(|d| d.get_temp(login_id)).unwrap_or_default();
         let field = ui.add(
             egui::TextEdit::singleline(&mut login)
@@ -1142,55 +1318,18 @@ fn ask_review(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>)
 }
 
 /// A draft PR: Ready for review, the step GitHub offers before merging.
-fn ready_pr(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
-    if app.pr_state(pr) == story::PrState::Draft
-        && ui
-            .button("Ready for review")
-            .on_hover_text("Marks the draft ready for review on GitHub")
-            .clicked()
+fn ready_pr(app: &App, pr: &story::Pr, lead: Option<Lead>, ui: &mut Ui, actions: &mut Vec<Action>) {
+    use egui_phosphor::regular as icon;
+    if app.pr_state(pr) != story::PrState::Draft {
+        return;
+    }
+    let filled = lead == Some(Lead::MarkReady);
+    if action(ui, icon::GIT_PULL_REQUEST, "Mark ready", Intent::Go, filled)
+        .on_hover_text("Marks the draft ready for review on GitHub")
+        .clicked()
     {
         actions.push(Action::ReadyPr(pr.url.clone()));
     }
-}
-
-fn close_pr(app: &App, card: &Card, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
-    // What GitHub says now, not what the card was built with: a merged or
-    // closed PR has nothing to close.
-    let open = matches!(
-        app.pr_state(pr),
-        story::PrState::Open | story::PrState::Approved | story::PrState::Draft
-    );
-    if !open {
-        return;
-    }
-    let canceled = (!card.pr_only())
-        .then(|| app.states.get(&card.issue.team.id))
-        .flatten()
-        .and_then(|states| story::canceled_state(states))
-        .filter(|s| s.id != card.issue.state.id);
-    let menu = ui.menu_button("Close PR", |ui| {
-        let close = |cancel| Action::ClosePr {
-            url: pr.url.clone(),
-            cancel,
-        };
-        if ui
-            .button("Close the PR")
-            .on_hover_text("Closes it on GitHub without merging; it can be reopened there")
-            .clicked()
-        {
-            actions.push(close(None));
-            ui.close();
-        }
-        if let Some(state) = canceled {
-            let text = format!("Close the PR and cancel {}", card.issue.identifier);
-            let hover = format!("Also moves the ticket to {} in Linear", state.name);
-            if ui.button(text).on_hover_text(hover).clicked() {
-                actions.push(close(Some((card.issue.id.clone(), state.id.clone()))));
-                ui.close();
-            }
-        }
-    });
-    mark(app, ui, "close-pr", menu.response.rect);
 }
 
 /// GitHub's Update branch: merges the base into a branch that is behind,
@@ -1206,8 +1345,8 @@ pub(super) fn update_branch(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mu
     if !pr.open || gate.branch != "BEHIND" {
         return;
     }
-    let button = ui
-        .button("Update branch")
+    let update = egui_phosphor::regular::GIT_BRANCH;
+    let button = action(ui, update, "Update branch", Intent::Plain, false)
         .on_hover_text("Merges the latest base branch into this PR's branch, on GitHub.");
     mark(app, ui, "update-branch", button.rect);
     if button.clicked() {
@@ -1289,7 +1428,12 @@ pub(super) fn pr_verdict(app: &App, pr: &story::Pr, named: bool, draft_shown: bo
             if !approved.is_empty() {
                 ui.label(label("·"));
                 ui.label(
-                    label(&format!("✓ approved by {}", approved.join(", "))).color(p().success),
+                    label(&format!(
+                        "{} approved by {}",
+                        egui_phosphor::regular::CHECK,
+                        approved.join(", ")
+                    ))
+                    .color(p().success),
                 );
             }
             if !rest.is_empty() {
@@ -1318,12 +1462,18 @@ fn approvals(on_it: &[String]) -> (Vec<&str>, Vec<&str>) {
 /// Approve, only while GitHub says the user's review is what is missing
 /// and the PR is not theirs; bound to the head they saw, checked again
 /// right before. One click: an approval can be dismissed, a merge not.
-pub(super) fn approve(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
+pub(super) fn approve(
+    app: &App,
+    pr: &story::Pr,
+    lead: Option<Lead>,
+    ui: &mut Ui,
+    actions: &mut Vec<Action>,
+) {
     let Some(Ok(gate)) = app.gates.get(&pr.url) else {
         return;
     };
     if pr.open && gate.own {
-        ai_review(app, pr, gate, ui, actions);
+        ai_review(app, pr, gate, lead, ui, actions);
         return;
     }
     if !pr.open || !gate.can_approve {
@@ -1341,15 +1491,17 @@ pub(super) fn approve(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<
     };
     let (text, hover) = match &note {
         Some(note) => (
-            "✓ Approve with note",
+            "Approve with note",
             format!("Approves the PR at {short} as you, on GitHub, commenting:\n{note}"),
         ),
         None => (
-            "✓ Approve",
+            "Approve",
             format!("Approves the PR at {short} as you, on GitHub."),
         ),
     };
-    let button = ui.button(text).on_hover_text(hover);
+    let check = egui_phosphor::regular::CHECK;
+    let button =
+        action(ui, check, text, Intent::Good, lead == Some(Lead::Approve)).on_hover_text(hover);
     mark(app, ui, "approve", button.rect);
     if button.clicked() {
         actions.push(Action::Approve {
@@ -1367,6 +1519,7 @@ fn ai_review(
     app: &App,
     pr: &story::Pr,
     gate: &crate::github::Gate,
+    lead: Option<Lead>,
     ui: &mut Ui,
     actions: &mut Vec<Action>,
 ) {
@@ -1389,11 +1542,13 @@ fn ai_review(
         return;
     }
     let text = if asked.is_some() {
-        "✳ Re-request AI review"
+        "Re-request AI review"
     } else {
-        "✳ Request AI review"
+        "Request AI review"
     };
-    let button = hover_hand(&ui.button(text)).on_hover_text(format!(
+    let sparkle = egui_phosphor::regular::SPARKLE;
+    let filled = lead == Some(Lead::AiReview);
+    let button = action(ui, sparkle, text, Intent::Go, filled).on_hover_text(format!(
         "Your PR has no approval yet. One click {how}, at {short}."
     ));
     mark(app, ui, "ai-review", button.rect);
@@ -1480,58 +1635,189 @@ fn quick_actions(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>)
     ui.add_space(12.0);
 }
 
-/// Unresolved review threads on an open PR: one click runs
-/// the fix-comments skill on it in this ticket's session.
-fn fix_comments(app: &App, card: &Card, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
-    let Some(Ok(gate)) = app.gates.get(&pr.url) else {
-        return;
-    };
-    if !pr.open || gate.open_threads == 0 {
-        return;
-    }
-    let n = gate.open_threads;
-    let text = format!("✳ Fix {n} comment{}", if n == 1 { "" } else { "s" });
-    let skill = crate::profile::get().skill("fixComments");
-    let agent = app.claude.agent_of(&card.issue.id);
-    let button = session_button(ui, agent, &text).on_hover_text(format!(
-        "Runs /{skill} on this PR in the ticket's {} session: fixes each \
-         thread, pushes, replies and resolves it. Never merges.",
-        agent.short()
-    ));
-    mark(app, ui, "fix-comments", button.rect);
-    if button.clicked() {
-        actions.push(Action::RunSkill {
-            issue_id: card.issue.id.clone(),
-            command: format!("/{skill} {}", pr.url),
-            submit: true,
-        });
+/// What Fix covers on a card's open PRs (`fix_parts`), each its own
+/// command: review threads, red checks, changes asked or conflicts, a
+/// merge-queue drop.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum FixPart {
+    /// Open review threads: the fix-comments skill on the PR.
+    Comments { url: String, n: usize },
+    /// Failing or erroring checks: only their root cause.
+    Ci,
+    /// Changes asked for, or conflicts: the build skill's fix mode.
+    Changes,
+    /// The merge queue dropped the PR: why, from the queue's run.
+    Queue {
+        url: String,
+        reason: String,
+        base: String,
+    },
+}
+
+impl FixPart {
+    fn what(&self) -> String {
+        match self {
+            FixPart::Comments { n, .. } => {
+                format!("{n} comment{}", if *n == 1 { "" } else { "s" })
+            }
+            FixPart::Ci => "CI".into(),
+            FixPart::Changes => "changes".into(),
+            FixPart::Queue { .. } => "merge queue".into(),
+        }
     }
 }
 
-/// The merge queue dropped the PR for a failure (`Gate::queue_failed`):
-/// the ticket's session finds why from the queue's run and fixes it on the
-/// PR's branch. Queuing it again stays the user's click.
-fn fix_queue(app: &App, card: &Card, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
-    let Some(Ok(gate)) = app.gates.get(&pr.url) else {
-        return;
-    };
-    if !pr.open || gate.queue_failed.is_empty() {
+/// Every reason to fix the open PRs (`(url, gate)`), once each.
+fn fix_parts(prs: &[(&str, &crate::github::Gate)]) -> Vec<FixPart> {
+    let mut parts = Vec::new();
+    for (url, gate) in prs {
+        if gate.open_threads > 0 {
+            parts.push(FixPart::Comments {
+                url: (*url).to_owned(),
+                n: gate.open_threads,
+            });
+        }
+    }
+    if prs
+        .iter()
+        .any(|(_, g)| matches!(g.checks.as_str(), "FAILURE" | "ERROR"))
+    {
+        parts.push(FixPart::Ci);
+    }
+    if prs
+        .iter()
+        .any(|(_, g)| g.review == "CHANGES_REQUESTED" || g.branch == "DIRTY")
+    {
+        parts.push(FixPart::Changes);
+    }
+    for (url, gate) in prs {
+        if !gate.queue_failed.is_empty() {
+            parts.push(FixPart::Queue {
+                url: (*url).to_owned(),
+                reason: gate.queue_failed.clone(),
+                base: gate.base_branch.clone(),
+            });
+        }
+    }
+    parts
+}
+
+/// One button for all of it: "Fix · 3 comments · CI".
+fn fix_label(parts: &[FixPart]) -> String {
+    let mut comments = 0;
+    let mut words = Vec::new();
+    for part in parts {
+        match part {
+            FixPart::Comments { n, .. } => comments += n,
+            other => words.push(other.what()),
+        }
+    }
+    if comments > 0 {
+        let what = FixPart::Comments {
+            url: String::new(),
+            n: comments,
+        }
+        .what();
+        words.insert(0, what);
+    }
+    format!("✳ Fix · {}", words.join(" · "))
+}
+
+/// What Fix runs, and its hint: one part alone runs just that part; more
+/// run the build skill's fix mode, which takes comments, checks, changes
+/// and conflicts together.
+fn fix_run(parts: &[FixPart], build: &str, fix_comments: &str, id: &str) -> (String, String) {
+    match parts {
+        [FixPart::Comments { url, n }] => (
+            format!("/{fix_comments} {url}"),
+            format!(
+                "Runs /{fix_comments} on the PR in the ticket's Claude session: fixes each of the \
+                 {n} threads, pushes, replies and resolves it. Never merges."
+            ),
+        ),
+        [FixPart::Ci] => (
+            {
+                let ci = "only the failing CI checks: fix their root cause, change nothing else";
+                format!("/{build} {id} {ci}")
+            },
+            "Runs the build skill's fix mode on the failing checks only: their root cause, \
+             nothing else"
+                .into(),
+        ),
+        [FixPart::Queue { url, reason, base }] => (
+            fix_queue_brief(url, reason, base),
+            format!(
+                "The merge queue dropped this PR ({}). Finds why from the queue's last run and \
+                 fixes it on the PR's branch, in the ticket's Claude session. Never queues or \
+                 merges.",
+                reason.replace('_', " ")
+            ),
+        ),
+        _ => (
+            format!("/{build} {id}"),
+            format!(
+                "Runs /{build} in fix mode in the ticket's Claude session: review comments, \
+                 failing checks, changes asked for and conflicts. Never merges."
+            ),
+        ),
+    }
+}
+
+/// Fix: everything that blocks the card's open PRs, as one button; its ▾
+/// runs one part alone when there are several. `lead`: the row's filled
+/// button.
+fn fix_button(app: &App, card: &Card, lead: bool, ui: &mut Ui, actions: &mut Vec<Action>) {
+    let prs: Vec<(&str, &crate::github::Gate)> = card
+        .prs
+        .iter()
+        .filter(|pr| pr.open)
+        .filter_map(|pr| match app.gates.get(&pr.url) {
+            Some(Ok(gate)) => Some((pr.url.as_str(), gate)),
+            _ => None,
+        })
+        .collect();
+    let parts = fix_parts(&prs);
+    if parts.is_empty() {
         return;
     }
-    let agent = app.claude.agent_of(&card.issue.id);
-    let button = session_button(ui, agent, "✳ Fix failing MQ").on_hover_text(format!(
-        "The merge queue dropped this PR ({}). Finds why from the queue's last run and \
-         fixes it on the PR's branch, in the ticket's {} session. Never queues or merges.",
-        gate.queue_failed.replace('_', " "),
-        agent.short()
-    ));
-    mark(app, ui, "fix-queue", button.rect);
-    if button.clicked() {
-        actions.push(Action::RunSkill {
-            issue_id: card.issue.id.clone(),
-            command: fix_queue_brief(&pr.url, &gate.queue_failed, &gate.base_branch),
-            submit: true,
-        });
+    let profile = crate::profile::get();
+    let (build, fix_comments) = (profile.skill("build"), profile.skill("fixComments"));
+    let id = &card.issue.identifier;
+    let run = |command: String| Action::RunSkill {
+        issue_id: card.issue.id.clone(),
+        command,
+        submit: true,
+    };
+    let (command, hint) = fix_run(&parts, &build, &fix_comments, id);
+    let extra = if parts.len() > 1 {
+        parts
+            .iter()
+            .map(|part| {
+                let (command, hint) =
+                    fix_run(std::slice::from_ref(part), &build, &fix_comments, id);
+                (format!("Only the {}", part.what()), hint, run(command))
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let rect = step_button(
+        app,
+        card,
+        &fix_label(&parts),
+        &hint,
+        run(command),
+        remote_step(card),
+        lead.then_some(Intent::Fix),
+        extra,
+        ui,
+        actions,
+    );
+    if parts.iter().any(|p| matches!(p, FixPart::Comments { .. })) {
+        mark(app, ui, "fix-comments", rect);
+    }
+    if parts.iter().any(|p| matches!(p, FixPart::Queue { .. })) {
+        mark(app, ui, "fix-queue", rect);
     }
 }
 
@@ -1556,7 +1842,15 @@ fn fix_queue_brief(url: &str, reason: &str, base: &str) -> String {
 /// A squash-merge takes two, since it cannot be taken back. Otherwise, why
 /// not, in mono, unless the status already says it (draft, merging,
 /// merged, closed).
-pub(super) fn merge(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
+pub(super) fn merge(
+    app: &App,
+    pr: &story::Pr,
+    lead: Option<Lead>,
+    ui: &mut Ui,
+    actions: &mut Vec<Action>,
+) {
+    let git_merge = egui_phosphor::regular::GIT_MERGE;
+    let filled = lead == Some(Lead::Merge);
     if let Some(sha) = app.merged.get(&pr.url) {
         ui.label(label(&format!("merged {}", &sha[..7.min(sha.len())])));
         return;
@@ -1575,7 +1869,13 @@ pub(super) fn merge(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Ac
     let short = &gate.head[..7.min(gate.head.len())];
     if gate.auto_merge {
         let rect = ui
-            .label(label("✓ merges when ready").color(p().success))
+            .label(
+                label(&format!(
+                    "{} merges when ready",
+                    egui_phosphor::regular::CHECK
+                ))
+                .color(p().success),
+            )
             .rect;
         mark(app, ui, "merge-when-ready", rect);
         if ui
@@ -1598,17 +1898,19 @@ pub(super) fn merge(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Ac
             "squash-merges it"
         };
         if !armed {
-            let button = ui.button("Merge when ready").on_hover_text(format!(
-                "Approved, checks still running at {short}: GitHub {then} once they pass. \
+            let button = action(ui, git_merge, "Merge when ready", Intent::Good, filled)
+                .on_hover_text(format!(
+                    "Approved, checks still running at {short}: GitHub {then} once they pass. \
                  New commits turn it off."
-            ));
+                ));
             mark(app, ui, "merge-when-ready", button.rect);
             if button.clicked() {
                 ui.data_mut(|d| d.insert_temp(armed_id, true));
             }
             return;
         }
-        let button = primary(ui, &format!("Merge when ready at {short}")).on_hover_text(format!(
+        let text = format!("Merge when ready at {short}");
+        let button = action(ui, git_merge, &text, Intent::Good, true).on_hover_text(format!(
             "Checks still running: GitHub {then} once they pass."
         ));
         if gate.merge_queue {
@@ -1636,7 +1938,8 @@ pub(super) fn merge(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Ac
         } else {
             "Squash-merges the PR."
         };
-        let button = primary(ui, "Merge").on_hover_text(format!("Checks green at {short}. {what}"));
+        let button = action(ui, git_merge, "Merge", Intent::Good, filled)
+            .on_hover_text(format!("Checks green at {short}. {what}"));
         mark(app, ui, "merge", button.rect);
         if button.clicked() {
             ui.data_mut(|d| d.insert_temp(armed_id, true));
@@ -1648,7 +1951,7 @@ pub(super) fn merge(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Ac
     } else {
         format!("Squash-merge at {short}")
     };
-    let button = primary(ui, &confirm);
+    let button = action(ui, git_merge, &confirm, Intent::Good, true);
     if gate.merge_queue {
         mark(app, ui, "merge", button.rect);
     }
@@ -1756,21 +2059,6 @@ fn plan_step(card: &Card) -> (&'static str, String, String, bool) {
     )
 }
 
-/// Fix narrowed to the failing checks: the build skill's fix mode with that
-/// as the reviewer intent, so it leaves the approved change alone.
-fn fix_ci(
-    (_, _, command, submit): (&'static str, String, String, bool),
-) -> (&'static str, String, String, bool) {
-    (
-        "✳ Fix CI",
-        "Runs the build skill's fix mode on the failing checks only: their root cause, \
-         nothing else"
-            .to_owned(),
-        format!("{command} only the failing CI checks: fix their root cause, change nothing else"),
-        submit,
-    )
-}
-
 /// A step's button: it runs in this ticket's session; the chevron picks the
 /// agent (before a session exists) or, when the profile names the bot's
 /// command for it, hands the step to the bot. The bot's commands are Linear
@@ -1783,6 +2071,8 @@ fn step_button(
     hint: &str,
     local: Action,
     remote: Option<story::BotCommand>,
+    lead: Option<Intent>,
+    extra: Vec<(String, String, Action)>,
     ui: &mut Ui,
     actions: &mut Vec<Action>,
 ) -> egui::Rect {
@@ -1795,13 +2085,23 @@ fn step_button(
     // Button and chevron touch, in this row (a nested row sits lower than
     // its neighbours).
     let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
-    let button = session_button(ui, agent, label).on_hover_text(hint);
+    let button = match lead {
+        Some(intent) => session_lead(ui, agent, label, intent),
+        None => session_button(ui, agent, label),
+    }
+    .on_hover_text(hint);
     let rect = button.rect;
     if button.clicked() {
         actions.push(local.clone());
     }
-    if !started || remote.is_some() || unset {
+    if !started || remote.is_some() || unset || !extra.is_empty() {
         chevron_menu(ui, "Another way to do it", |ui| {
+            for (text, hint, action) in extra {
+                if hover_hand(&ui.button(text)).on_hover_text(hint).clicked() {
+                    actions.push(action);
+                    ui.close();
+                }
+            }
             if !started {
                 for choice in crate::claude::Agent::offered() {
                     let text = format!("Here, with {}", choice.label());
@@ -2326,12 +2626,123 @@ mod tests {
 
     #[test]
     fn fix_ci_passes_only_the_failing_checks_as_the_intent() {
-        let (label, _, command, submit) =
-            fix_ci(("✳ Fix", String::new(), "/build ABC-1".to_owned(), true));
-        assert_eq!(label, "✳ Fix CI");
+        let (command, hint) = fix_run(&[FixPart::Ci], "build", "fix-pr-comments", "ABC-1");
         assert!(command.starts_with("/build ABC-1 only the failing CI checks"));
         assert!(command.contains("change nothing else"));
-        assert!(submit);
+        assert!(hint.contains("failing checks only"));
+    }
+
+    fn gate(f: impl FnOnce(&mut crate::github::Gate)) -> crate::github::Gate {
+        let mut gate = crate::github::Gate {
+            state: "OPEN".into(),
+            checks: "SUCCESS".into(),
+            branch: "CLEAN".into(),
+            ..Default::default()
+        };
+        f(&mut gate);
+        gate
+    }
+
+    #[test]
+    fn the_row_fills_the_one_step_the_pr_needs_next() {
+        // A draft can only become ready, even with red checks.
+        let draft = gate(|g| {
+            g.draft = true;
+            g.checks = "FAILURE".into();
+        });
+        assert_eq!(lead(&draft, true), Some(Lead::MarkReady));
+        // Clean: merge it; checks still running and approved: merge when ready.
+        assert_eq!(lead(&gate(|g| g.green = true), false), Some(Lead::Merge));
+        assert_eq!(
+            lead(&gate(|g| g.can_auto_merge = true), false),
+            Some(Lead::Merge)
+        );
+        // Someone else's PR waiting for the user's review: Approve, before Fix.
+        let review = gate(|g| {
+            g.can_approve = true;
+            g.open_threads = 2;
+        });
+        assert_eq!(lead(&review, false), Some(Lead::Approve));
+        // Comments, red CI or a queue drop: Fix.
+        assert_eq!(lead(&gate(|g| g.open_threads = 1), false), Some(Lead::Fix));
+        assert_eq!(
+            lead(&gate(|g| g.checks = "ERROR".into()), false),
+            Some(Lead::Fix)
+        );
+        assert_eq!(
+            lead(&gate(|g| g.queue_failed = "checks_failed".into()), false),
+            Some(Lead::Fix)
+        );
+        // The user's own PR without approval: the AI review, else a person.
+        let own = gate(|g| {
+            g.own = true;
+            g.review = "REVIEW_REQUIRED".into();
+        });
+        assert_eq!(lead(&own, true), Some(Lead::AiReview));
+        assert_eq!(lead(&own, false), Some(Lead::RequestReview));
+        // Approved, merged, queued: nothing to fill.
+        let approved = gate(|g| {
+            g.own = true;
+            g.review = "APPROVED".into();
+        });
+        assert_eq!(lead(&approved, true), None);
+        assert_eq!(lead(&gate(|g| g.state = "MERGED".into()), true), None);
+        assert_eq!(lead(&gate(|g| g.queued = true), true), None);
+    }
+
+    #[test]
+    fn every_pr_action_is_still_reachable_from_the_row() {
+        // Regrouped (lead, outlined, Preview ▾, More ▾), never removed.
+        let source = include_str!("ticket.rs");
+        let source = source.split("#[cfg(test)]").next().unwrap();
+        for action in [
+            "Action::ReadyPr(",
+            "Action::Approve {",
+            "Action::AiReview {",
+            "Action::Merge {",
+            "Action::AutoMerge {",
+            "Action::CancelAutoMerge(",
+            "Action::UpdateBranch {",
+            "Action::LandBatch(",
+            "Action::RequestReview {",
+            "Action::LoadReviewers(",
+            "Action::AddLabel {",
+            "Action::ClosePr {",
+            "Action::RefreshGate(",
+            "Action::RunSkill {",
+        ] {
+            assert!(source.contains(action), "{action} is gone from the PR row");
+        }
+    }
+
+    #[test]
+    fn one_fix_button_takes_comments_ci_and_the_queue_together() {
+        let threads = gate(|g| g.open_threads = 3);
+        let red = gate(|g| {
+            g.checks = "FAILURE".into();
+            g.open_threads = 1;
+            g.queue_failed = "checks_failed".into();
+            g.base_branch = "main".into();
+        });
+        let parts = fix_parts(&[("u/1", &threads), ("u/2", &red)]);
+        assert_eq!(parts.len(), 4, "{parts:?}");
+        assert_eq!(fix_label(&parts), "✳ Fix · 4 comments · CI · merge queue");
+        // Several parts: the build skill's fix mode takes them together.
+        let (command, _) = fix_run(&parts, "build", "fix-pr-comments", "ABC-1");
+        assert_eq!(command, "/build ABC-1");
+        // One part alone runs just that part.
+        let only = fix_parts(&[("u/1", &threads)]);
+        assert_eq!(fix_label(&only), "✳ Fix · 3 comments");
+        let (command, _) = fix_run(&only, "build", "fix-pr-comments", "ABC-1");
+        assert_eq!(command, "/fix-pr-comments u/1");
+        let queue = fix_parts(&[("u/2", &gate(|g| g.queue_failed = "x".into()))]);
+        let (command, _) = fix_run(&queue, "build", "fix-pr-comments", "ABC-1");
+        assert!(command.contains("merge queue removed u/2"), "{command}");
+        // Changes asked for or conflicts go to the fix mode too.
+        let asked = fix_parts(&[("u/3", &gate(|g| g.branch = "DIRTY".into()))]);
+        assert_eq!(asked, vec![FixPart::Changes]);
+        // A clean PR has nothing to fix: no button.
+        assert!(fix_parts(&[("u/4", &gate(|_| {}))]).is_empty());
     }
 
     #[test]

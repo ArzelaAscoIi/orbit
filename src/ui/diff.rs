@@ -29,16 +29,22 @@ pub(super) fn show(app: &mut App, card: &Card, pr: &Pr, ui: &mut Ui, actions: &m
             actions.push(Action::ReloadDiff);
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.button("GitHub ↗").clicked() {
+            let github = egui_phosphor::regular::ARROW_SQUARE_OUT;
+            if action(ui, github, "GitHub", Intent::Plain, false)
+                .on_hover_text("The PR's files on GitHub")
+                .clicked()
+            {
                 actions.push(Action::Open(format!("{}/files", pr.url)));
             }
-            // Review done here, approve and merge here: same gates as the
-            // ticket's row, but not on a diff new commits left behind.
+            // Review done here, approve and merge here: same gates and the
+            // same filled lead as the ticket's row, but not on a diff new
+            // commits left behind. Right to left: Approve reads first.
             if app.moved(&pr.url).is_none() {
-                super::ticket::merge(app, pr, ui, actions);
-                review_menu(app, pr, ui);
-                super::ticket::approve(app, pr, ui, actions);
+                let lead = super::ticket::lead_of(app, pr);
                 super::ticket::update_branch(app, pr, ui, actions);
+                super::ticket::merge(app, pr, lead, ui, actions);
+                review_menu(app, pr, ui);
+                super::ticket::approve(app, pr, lead, ui, actions);
             }
         });
     });
@@ -1343,28 +1349,27 @@ fn review_menu(app: &App, pr: &story::Pr, ui: &mut Ui) {
         return;
     }
     let mut pick = None;
-    let rect = ui
-        .menu_button("Review ▾", |ui| {
-            if ui
-                .button("Comment…")
-                .on_hover_text("A review comment, without approving")
+    let review = egui_phosphor::regular::CHAT_TEXT;
+    let rect = action_menu(ui, review, "Review", "Comment, or request changes", |ui| {
+        if ui
+            .button("Comment…")
+            .on_hover_text("A review comment, without approving")
+            .clicked()
+        {
+            pick = Some(false);
+            ui.close();
+        }
+        if review_choices(gate.own).1
+            && ui
+                .button("Request changes…")
+                .on_hover_text("Asks the author to change something before it merges")
                 .clicked()
-            {
-                pick = Some(false);
-                ui.close();
-            }
-            if review_choices(gate.own).1
-                && ui
-                    .button("Request changes…")
-                    .on_hover_text("Asks the author to change something before it merges")
-                    .clicked()
-            {
-                pick = Some(true);
-                ui.close();
-            }
-        })
-        .response
-        .rect;
+        {
+            pick = Some(true);
+            ui.close();
+        }
+    })
+    .rect;
     mark(app, ui, "review-menu", rect);
     if let Some(changes) = pick {
         ui.data_mut(|d| {

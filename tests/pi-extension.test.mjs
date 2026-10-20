@@ -9,6 +9,8 @@ import { join } from "node:path";
 
 const dir = mkdtempSync(join(tmpdir(), "orbit-pi-"));
 const log = join(dir, "log");
+// Present from the start: a test may read it before the first report lands.
+writeFileSync(log, "");
 const bin = join(dir, "orbit");
 // A stand-in for Orbit's `report`: one line per call.
 writeFileSync(bin, `#!/bin/sh\necho "$3 $4" >> "$2"\n`);
@@ -22,6 +24,16 @@ process.env.ORBIT_PI_RULES = JSON.stringify({
 
 const ext = await import("../src/claude/pi-orbit.ts");
 const wait = () => new Promise((r) => setTimeout(r, 200));
+// Each report runs a process in turn, so a busy machine needs longer than
+// any fixed sleep: wait until the log holds `n` lines (5 s at most).
+const lines = async (n) => {
+  for (let i = 0; i < 100; i++) {
+    const got = readFileSync(log, "utf8").trim().split("\n").filter(Boolean);
+    if (got.length >= n) return got;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return readFileSync(log, "utf8").trim().split("\n").filter(Boolean);
+};
 
 test("rules: deny wins, allow passes, edits inside the folder run, the rest asks", () => {
   const rules = ext.parseRules(process.env.ORBIT_PI_RULES);
@@ -61,9 +73,8 @@ test("reports working, needs-approval and turn; a declined call is blocked", asy
   assert.equal(await handlers.tool_call({ toolName: "bash", input: { command: "npm test x" } }, ctx), undefined);
   idle = true;
   handlers.agent_settled({}, ctx);
-  await wait();
-  const lines = readFileSync(log, "utf8").trim().split("\n");
-  assert.deepEqual(lines.map((l) => l.split(" ")[0]), [
+  const got = await lines(6);
+  assert.deepEqual(got.map((l) => l.split(" ")[0]), [
     "working",
     "needs-approval",
     "working",

@@ -488,6 +488,25 @@ fn play(app: &mut App, ctx: &egui::Context, verb: &str, rest: &str) -> Result<Op
         "ask" => Action::AskPr(rest.to_owned()),
         // The focused browser pane goes to an address.
         "browse" => Action::BrowserGo(app.panes.focused, rest.to_owned()),
+        // What a step button sends: `run DEV-1 /fix-pr-comments <url>`.
+        "run" => {
+            let (issue_id, command) = rest
+                .split_once(' ')
+                .ok_or("run needs a ticket and a command")?;
+            Action::RunSkill {
+                issue_id: issue_id.to_owned(),
+                command: command.to_owned(),
+                submit: true,
+            }
+        }
+        // The focused editor pane gets a file's text.
+        "editor-file" => {
+            let text = std::fs::read_to_string(rest).map_err(|e| format!("{rest}: {e}"))?;
+            let pane = app.panes.focused;
+            let editor = app.editors.get_mut(&pane).ok_or("no editor in front")?;
+            editor.text = text;
+            return Ok(None);
+        }
         "do" => match rest {
             "Guide" => Action::Guide,
             "Split" => Action::Split { across: true },
@@ -505,6 +524,7 @@ fn play(app: &mut App, ctx: &egui::Context, verb: &str, rest: &str) -> Result<Op
             "Orchestrate" => Action::Orchestrate,
             "FileAsIs" => Action::FileAsIs,
             "BrowserWindow" => Action::BrowserWindow,
+            "EditorWindow" => Action::EditorWindow,
             other => return Err(format!("no action {other}")),
         },
         other => return Err(format!("no step {other}")),

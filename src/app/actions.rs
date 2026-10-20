@@ -710,7 +710,11 @@ impl App {
                     });
                 }
             }
-            Action::ReadyPr(url) => self.send(Command::ReadyPr { url }),
+            Action::ReadyPr(url) => {
+                if self.readying.insert(url.clone()) {
+                    self.send(Command::ReadyPr { url });
+                }
+            }
             Action::NewTab => {
                 self.stash_window();
                 self.windows
@@ -2144,6 +2148,15 @@ impl App {
                     return;
                 };
                 let issue_id = card.issue.id.clone();
+                // A second click while the first is on its way does nothing.
+                let working = self
+                    .claude
+                    .live_of(&issue_id)
+                    .is_some_and(|l| matches!(l.label(), "working" | "starting"));
+                let age = self.started.get(&issue_id).map(|at| at.elapsed());
+                if super::started_state(age, working) == super::Started::Waiting {
+                    return;
+                }
                 // Its own window when no pane shows it (an empty pane takes
                 // it, as a click does): dispatching N tickets gives N windows,
                 // never one that each replaces in the focused pane.
@@ -2200,6 +2213,9 @@ impl App {
                     self.missions_at = None;
                 }
                 self.run_in_ticket(&card, command, submit, ctx);
+                self.started
+                    .retain(|_, at| at.elapsed() < std::time::Duration::from_secs(300));
+                self.started.insert(issue_id, std::time::Instant::now());
             }
             Action::SetState { issue_id, state_id } => {
                 self.shown.insert(

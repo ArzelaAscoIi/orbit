@@ -82,6 +82,7 @@ impl App {
                 }
             }
             Event::Gate { url, result } => {
+                self.readying.remove(&url);
                 if !self.merging.contains(&url) {
                     // An older answer that still asks for the review keeps
                     // the approval shown; an error or a done review ends it.
@@ -299,6 +300,7 @@ impl App {
             }
             Event::PrReady { url, result } => {
                 if let Err(error) = result {
+                    self.readying.remove(&url);
                     self.error = Some(format!("Ready for review: {error}"));
                 }
                 self.send(Command::Gate { url });

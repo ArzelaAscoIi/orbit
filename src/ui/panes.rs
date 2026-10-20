@@ -239,7 +239,7 @@ fn editor(app: &mut App, id: u64, ui: &mut Ui, actions: &mut Vec<Action>) {
                 egui::TextEdit::singleline(&mut editor.path)
                     .hint_text("save to: ~/path/to/file.py")
                     .font(egui::TextStyle::Monospace)
-                    .desired_width(ui.available_width()),
+                    .desired_width((ui.available_width() - 12.0).max(80.0)),
             );
         });
     });
@@ -281,18 +281,51 @@ fn editor(app: &mut App, id: u64, ui: &mut Ui, actions: &mut Vec<Action>) {
             state.store(ui.ctx(), field);
         }
     }
+    // Code reads in lines: numbers in a muted gutter, no soft wrap (a long
+    // line scrolls sideways), the same padding as a terminal pane.
+    let lines = editor.text.split('\n').count();
+    let mut layouter = |ui: &Ui, buf: &dyn egui::TextBuffer, _wrap: f32| {
+        let font = egui::TextStyle::Monospace.resolve(ui.style());
+        let job =
+            egui::text::LayoutJob::simple(buf.as_str().to_owned(), font, p().text, f32::INFINITY);
+        ui.fonts_mut(|f| f.layout_job(job))
+    };
+    ui.add_space(8.0);
     egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-        ui.add_sized(
-            ui.available_size(),
-            egui::TextEdit::multiline(&mut editor.text)
-                .id(field)
-                .code_editor()
-                .lock_focus(true)
-                .hint_text("paste or type")
-                .margin(Margin::symmetric(12, 8))
-                .frame(egui::Frame::NONE),
-        );
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            ui.vertical(|ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                ui.add(
+                    egui::Label::new(RichText::new(gutter(lines)).monospace().color(p().text_3))
+                        .selectable(false),
+                );
+            });
+            ui.add_space(12.0);
+            let size = ui.available_size();
+            ui.add_sized(
+                size,
+                egui::TextEdit::multiline(&mut editor.text)
+                    .id(field)
+                    .code_editor()
+                    .lock_focus(true)
+                    .hint_text("paste or type")
+                    .layouter(&mut layouter)
+                    .desired_width(f32::INFINITY)
+                    .margin(Margin::ZERO)
+                    .frame(egui::Frame::NONE),
+            );
+        });
     });
+}
+
+/// The editor's line numbers, right-aligned, one per line of text.
+fn gutter(lines: usize) -> String {
+    let width = lines.to_string().len().max(2);
+    (1..=lines.max(1))
+        .map(|n| format!("  {n:>width$}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// A browser pane (browser.rs): back, reload, open outside, the address,
@@ -463,6 +496,13 @@ pub(super) fn find_bar(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_editor_numbers_every_line() {
+        assert_eq!(super::gutter(1), "   1");
+        assert_eq!(super::gutter(3), "   1\n   2\n   3");
+        assert_eq!(super::gutter(12).lines().last(), Some("  12"));
+    }
+
     use super::*;
 
     fn on_claude(id: u64, session: &str) -> (u64, TicketView) {

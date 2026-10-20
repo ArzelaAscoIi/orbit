@@ -99,6 +99,9 @@ right here, a PR on its Diff tab. Select to copy.
 A strip of windows on top (Cmd+1 to 9), and inside each, panes side by side: Cmd+D to the
 right, Cmd+Shift+D below, each a full ticket with its own tabs. Cmd+N opens a new tab:
 For you, your login shell (k9s, logs, anything) or a new ticket.
+The editor (Cmd+N, then E) numbers its lines and never wraps them: a long line scrolls sideways.
+
+Every button that starts work shows it at once: Fix turns into "Fixing…" with a spinner until the ticket's session picks it up, then "working · open"; Approve, Merge, Mark ready and Request AI review say "Approving…" and so on until GitHub answers.
 
 
 

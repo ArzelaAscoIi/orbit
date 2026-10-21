@@ -642,7 +642,8 @@ pub const STEPS: &[Step] = &[
         "One Fix button for whatever blocks a PR: open review threads, red CI, changes asked \
          for, conflicts, a merge-queue drop. It says what it covers (Fix · 3 comments · CI) \
          and runs in the ticket's Claude session; comments alone run {fix}, which fixes, \
-         replies and resolves each thread. Its ▼ runs one part alone.",
+         replies and resolves each thread. Its ▼ runs one part alone. It sits on every PR \
+         that needs it, in any stage; with several PRs, each row has its own.",
     ),
     step(
         Some("yolo"),

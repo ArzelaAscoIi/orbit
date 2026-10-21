@@ -330,3 +330,4 @@
 2026-10-20 · ticket · A PR's buttons lead with the one step it needs next, filled => test:the_row_fills_the_one_step_the_pr_needs_next; test:one_fix_button_takes_comments_ci_and_the_queue_together; test:every_pr_action_is_still_reachable_from_the_row; code:src/ui/widgets.rs:pub(super) enum Intent
 2026-10-20 · panes · The editor reads like code: a muted line-number gutter, the => test:the_editor_numbers_every_line; code:src/ui/panes.rs:LayoutJob::simple(buf.as_str().to_owned(), font, p().text, f32::INFINITY)
 2026-10-20 · ticket · A click on a button that starts work always shows it was tak => test:a_clicked_step_waits_then_runs_or_says_no_answer; test:a_session_step_says_what_it_does_while_on_its_way; code:src/ui/ticket.rs:pending(ui, "Marking ready")
+2026-10-21 · ticket · Fix sits on every PR that needs it, in any stage of the tick => test:the_row_fills_the_one_step_the_pr_needs_next; code:src/ui/ticket.rs:fix_button(app, card, Some(pr), true, ui, actions);

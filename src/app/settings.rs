@@ -32,7 +32,7 @@ impl App {
 
     fn has_key(&self, secret: Secret) -> bool {
         match secret {
-            Secret::Anthropic => self.has_anthropic_key(),
+            Secret::Anthropic => self.has_own_anthropic_key(),
             Secret::IncidentIo => self.incident_key.is_some(),
             Secret::Github => self.github_token.is_some(),
             Secret::Linear => true,

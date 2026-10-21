@@ -121,6 +121,23 @@ pub(super) fn claude() -> Command {
     command
 }
 
+/// `claude -p` for the app's own one-shot helpers when no Anthropic key is
+/// set: the user's Claude Code login answers. No tools, MCP servers,
+/// settings or transcript; the prompt comes on stdin.
+pub fn print(model: &str, system: &str) -> Command {
+    let mut command = claude();
+    command.args(["-p", "--model", model, "--system-prompt", system]);
+    command.args([
+        "--tools",
+        "",
+        "--strict-mcp-config",
+        "--setting-sources",
+        "",
+    ]);
+    command.args(["--no-session-persistence", "--output-format", "json"]);
+    command
+}
+
 pub(super) fn codex() -> Command {
     let mut command = Command::new(on_path("codex").unwrap_or_else(|| PathBuf::from("codex")));
     prepare(&mut command);

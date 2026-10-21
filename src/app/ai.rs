@@ -43,7 +43,8 @@ impl App {
         if let Err(error) = secrets::clear(Secret::Anthropic) {
             self.error = Some(format!("could not remove the Anthropic key: {error}"));
         }
-        self.anthropic_key = None;
+        // Claude Code's login answers from now on.
+        self.anthropic_key = Some(anthropic::CLAUDE_CODE.into());
         self.brief = None;
         self.brief_for = None;
         self.brief_error = why;
@@ -58,7 +59,7 @@ impl App {
 
     /// Anthropic's answer to a helper failed; a rejected key is dropped.
     fn helper_failed(&mut self, error: String) {
-        if error.contains("401") {
+        if error.contains("401") && self.has_own_anthropic_key() {
             self.forget_anthropic_key(Some(REJECTED.into()));
         } else {
             self.brief_error = Some(error);

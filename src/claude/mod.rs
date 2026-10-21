@@ -43,7 +43,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::story::Card;
 pub use agents::{Live, show_app_of, show_host};
-pub use shell::{gh, gh_with, which};
+pub use shell::{gh, gh_with, print, which};
 pub use terminal::{Terminal, show};
 
 /// The local agent that owns a saved conversation.

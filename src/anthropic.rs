@@ -3,6 +3,8 @@
 //!
 //! Plain HTTP to the Messages API (there is no Rust SDK), on Claude Haiku:
 //! these are short, frequent calls where speed matters more than depth.
+//! Without an Anthropic key the same prompts go through `claude -p`, on the
+//! user's Claude Code login (`CLAUDE_CODE` in place of the key).
 
 use anyhow::{Result, anyhow, bail};
 use serde_json::{Value, json};
@@ -10,6 +12,8 @@ use serde_json::{Value, json};
 use crate::story::{Card, Stage};
 
 const URL: &str = "https://api.anthropic.com/v1/messages";
+/// The key that means "no Anthropic key: ask the local Claude Code".
+pub const CLAUDE_CODE: &str = "claude-code";
 const MODEL: &str = "claude-haiku-4-5";
 /// For the diff walkthrough, which the user asks for: reading code for a
 /// reviewer needs more judgment than naming titles.
@@ -558,6 +562,9 @@ async fn ask_with(
     user: &str,
     max_tokens: u32,
 ) -> Result<String> {
+    if key == CLAUDE_CODE {
+        return ask_claude_code(model, system, user).await;
+    }
     let body = json!({
         "model": model,
         "max_tokens": max_tokens,
@@ -594,6 +601,39 @@ async fn ask_with(
     Ok(text)
 }
 
+/// One prompt through `claude -p`, the user on stdin (a diff is too long
+/// for an argument).
+async fn ask_claude_code(model: &str, system: &str, user: &str) -> Result<String> {
+    use tokio::io::AsyncWriteExt;
+    let mut command = tokio::process::Command::from(crate::claude::print(model, system));
+    command
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true);
+    let mut child = command
+        .spawn()
+        .map_err(|error| anyhow!("could not start Claude Code: {error}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(user.as_bytes()).await?;
+    }
+    let output = child.wait_with_output().await?;
+    let reply: Value = serde_json::from_slice(&output.stdout).map_err(|_| {
+        let error = String::from_utf8_lossy(&output.stderr);
+        anyhow!("Claude Code failed: {}", error.trim())
+    })?;
+    cli_text(&reply)
+}
+
+/// The answer in `claude -p --output-format json`'s result.
+fn cli_text(reply: &Value) -> Result<String> {
+    let text = reply["result"].as_str().unwrap_or_default();
+    if reply["is_error"] == true {
+        bail!("Claude Code failed: {text}");
+    }
+    Ok(text.to_owned())
+}
+
 /// The text blocks of a reply, without its thinking.
 fn reply_text(reply: &Value) -> String {
     reply["content"]
@@ -613,6 +653,19 @@ mod tests {
     fn the_walkthrough_flags_a_display_patch_over_a_value_computed_elsewhere() {
         assert!(GUIDE.contains("hides the symptom"));
         assert!(GUIDE.contains("where the value"));
+    }
+
+    #[test]
+    fn a_claude_code_reply_is_its_result_or_its_error() {
+        let ok = json!({"type": "result", "is_error": false, "result": "Login fails"});
+        assert_eq!(cli_text(&ok).unwrap(), "Login fails");
+        let failed = json!({"is_error": true, "result": "Not logged in"});
+        assert!(
+            cli_text(&failed)
+                .unwrap_err()
+                .to_string()
+                .contains("Not logged in")
+        );
     }
 
     #[test]

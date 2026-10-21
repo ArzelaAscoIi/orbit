@@ -1173,7 +1173,10 @@ impl App {
             shell_titles: HashMap::new(),
             shell_states: HashMap::new(),
             shell_trusted: None,
-            anthropic_key: secrets::get(Secret::Anthropic),
+            anthropic_key: Some(
+                secrets::get(Secret::Anthropic)
+                    .unwrap_or_else(|| crate::anthropic::CLAUDE_CODE.into()),
+            ),
 
             brief: None,
             brief_for: None,
@@ -1341,6 +1344,13 @@ impl App {
 
     pub fn has_anthropic_key(&self) -> bool {
         self.anthropic_key.is_some()
+    }
+
+    /// A key of the user's own, not Claude Code's login in its place.
+    pub fn has_own_anthropic_key(&self) -> bool {
+        self.anthropic_key
+            .as_deref()
+            .is_some_and(|key| key != crate::anthropic::CLAUDE_CODE)
     }
 
     pub fn has_github_token(&self) -> bool {

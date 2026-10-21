@@ -507,6 +507,8 @@ fn play(app: &mut App, ctx: &egui::Context, verb: &str, rest: &str) -> Result<Op
             editor.text = text;
             return Ok(None);
         }
+        // A session by its key, as a click on its row opens it.
+        "session" => Action::OpenSession(rest.to_owned()),
         "do" => match rest {
             "Guide" => Action::Guide,
             "Split" => Action::Split { across: true },

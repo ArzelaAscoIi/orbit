@@ -296,7 +296,7 @@
 2026-10-15 · ticket · When the merge queue dropped a PR for a failure the last tim => replaced:manual removals show it too since 2026-10-15 · ticket · Fix failing MQ also shows after a manual removal
 2026-10-15 · ticket · Fix failing MQ also shows after a manual removal from the me => replaced:the merge-queue drop is one part of Fix since 2026-10-20 · ticket · A PR's buttons lead with the one step it needs next, filled
 2026-10-15 · ticket · Every open ticket in any team that the bot does not have yet => test:yolo_hands_over_any_open_ticket_the_bot_does_not_have_yet; code:src/ui/ticket.rs:.button("Yolo")
-2026-10-15 · ticket · Who approved a PR is a clear line of its own on the ticket, => test:who_approved_a_pr_is_said_apart_from_who_else_is_on_it; code:src/app/mod.rs:|| (pr.merged && !self.gates.contains_key(&pr.url))
+2026-10-15 · ticket · Who approved a PR is a clear line of its own on the ticket, => test:who_approved_a_pr_is_said_apart_from_who_else_is_on_it; code:src/app/mod.rs:((pr.merged || merged_here) && !has_gate)
 2026-10-16 · windows · A window's sidebar row says the user's next move on its tick => test:a_window_says_the_next_move_the_way_the_user_works_a_ticket; code:src/ui/bar.rs:ui.label(label(next).color(p().signal))
 2026-10-16 · PRs · A PR's state follows GitHub sooner: ↻ beside its buttons ask => code:src/ui/ticket.rs:Action::RefreshGate(pr.url.clone()); code:src/app/mod.rs:.window_gates_at
 2026-10-16 · testing · The Testing tab's browser can test on the PR's preview, not => test:a_preview_is_ready_once_a_comment_names_where_it_runs; code:src/ui/testing.rs:The preview is deploying, not ready yet.

@@ -2292,17 +2292,27 @@ impl App {
     /// board run while the autopilot is on.
     fn stop_idle_sessions(&mut self) {
         let now = std::time::Instant::now();
-        if self.settings.keep_idle_sessions || now < self.idle_due || crate::read_only() {
+        if now < self.idle_due || crate::read_only() {
             return;
         }
         self.idle_due = now + std::time::Duration::from_secs(600);
-        let in_front: std::collections::HashSet<String> = self
+        let mut in_front: std::collections::HashSet<String> = self
             .claude
-            .saved
+            .attached
             .keys()
+            .chain(self.claude.saved.keys())
             .filter(|key| self.session_in_window(key).is_some())
             .cloned()
             .collect();
+        // The clone's chat shows in its panel, not in a window.
+        if self.chat_open {
+            in_front.extend(self.chat.clone());
+        }
+        // Viewers go even with keepIdleSessions: their sessions keep running.
+        self.claude.release_viewers(&in_front);
+        if self.settings.keep_idle_sessions {
+            return;
+        }
         let mut protected = vec![crate::claude::OPERATOR];
         if self.autopilot.on || self.autopilot.pending {
             protected.push(crate::claude::ORCHESTRATOR);

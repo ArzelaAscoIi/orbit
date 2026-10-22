@@ -103,8 +103,12 @@ pub fn plan_cli(
 
 /// One line per stop in `<data>/sessions-stopped.log`.
 pub fn log(data: &Path, key: &str, short: &str) {
+    log_line(data, &format!("stopped {key} ({short}): idle"));
+}
+
+pub fn log_line(data: &Path, what: &str) {
     use std::io::Write;
-    let line = format!("{} stopped {key} ({short}): idle\n", jiff::Timestamp::now());
+    let line = format!("{} {what}\n", jiff::Timestamp::now());
     if let Ok(mut file) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)

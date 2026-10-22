@@ -1629,6 +1629,37 @@ impl Sessions {
         stop.into_iter().map(|(key, _)| key).collect()
     }
 
+    /// Ends the attach terminals nobody looks at: a session in no window
+    /// (its window closed), or one the user left with ←, which turns
+    /// `claude attach` into Claude Code's agent view, polling for good.
+    /// The session keeps running; looking at it again attaches anew.
+    pub fn release_viewers(&mut self, shown: &HashSet<String>) {
+        let pids: Vec<u32> = self.attached.values().filter_map(Terminal::pid).collect();
+        let views = agent_views(&ps_args(&pids));
+        let release: Vec<(String, Option<u32>)> = self
+            .attached
+            .iter()
+            .map(|(key, t)| (key, t.pid()))
+            .filter(|(key, pid)| {
+                let busy = self.pending_lines.contains_key(*key)
+                    || self.enters.contains_key(*key)
+                    || self.starting.contains(*key);
+                let view = pid.is_some_and(|pid| views.contains(&pid));
+                !busy && (view || !shown.contains(*key))
+            })
+            .map(|(key, pid)| (key.clone(), pid))
+            .collect();
+        let data = crate::store::data_dir();
+        for (key, pid) in release {
+            if pid.is_some_and(|pid| views.contains(&pid)) {
+                idle::log_line(&data, &format!("stopped agent view {key}: left by ←"));
+            }
+            // Dropping the terminal kills its process.
+            self.attached.remove(&key);
+            self.auto_attached.remove(&key);
+        }
+    }
+
     pub fn stop(&mut self, key: &str) {
         // pi lives in its terminal: closing it ends the process; the session
         // file stays, so opening it again resumes.
@@ -2084,6 +2115,36 @@ fn free_repos() -> String {
 /// sessions quiet for 12 hours (idle.rs), listed, and stopped without the
 /// flag. Outside the app it cannot see panes or done tickets, so only the
 /// idle rule applies.
+/// `pid args` per line for these processes, from one `ps`.
+fn ps_args(pids: &[u32]) -> String {
+    if pids.is_empty() {
+        return String::new();
+    }
+    let list = pids
+        .iter()
+        .map(u32::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
+    std::process::Command::new("ps")
+        .args(["-o", "pid=,args=", "-p", &list])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default()
+}
+
+/// The processes in `ps` output that are Claude Code's agent view: the
+/// claude binary with `agents` alone (never `agents --json`).
+fn agent_views(ps: &str) -> HashSet<u32> {
+    ps.lines()
+        .filter_map(|line| {
+            let mut parts = line.split_whitespace();
+            let pid = parts.next()?.parse().ok()?;
+            let rest: Vec<&str> = parts.collect();
+            matches!(rest.as_slice(), [bin, "agents"] if bin.ends_with("claude")).then_some(pid)
+        })
+        .collect()
+}
+
 pub fn stop_idle_cli(dry_run: bool) -> anyhow::Result<()> {
     let saved: BTreeMap<String, Saved> =
         crate::store::load_at(&crate::store::data_dir().join("sessions.json"));
@@ -2776,6 +2837,17 @@ pub fn triage(teams: &[String], skills: Vec<(String, String)>) -> Spec {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_the_agent_view_is_picked_never_a_json_list_or_a_session() {
+        let ps = "  101 /Users/me/.local/bin/claude agents\n\
+                    102 /Users/me/.local/bin/claude agents --json --all\n\
+                    103 /Users/me/.local/bin/claude attach 3e7fed6b\n\
+                    104 claude agents\n\
+                    105 /bin/zsh -l\n";
+        let views = super::agent_views(ps);
+        assert_eq!(views, [101, 104].into_iter().collect());
+    }
+
     #[test]
     fn a_drive_nobody_steered_gets_a_session_that_knows_its_log() {
         let it = crate::mission::Initiative {

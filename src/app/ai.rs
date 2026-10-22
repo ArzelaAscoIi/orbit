@@ -473,7 +473,7 @@ impl App {
                 .attachments
                 .nodes
                 .iter()
-                .find(|a| a.url == crate::note_url())
+                .find(|a| crate::linear::same_url(&a.url, &crate::note_url()))
             else {
                 continue;
             };
@@ -525,7 +525,7 @@ impl App {
                 .attachments
                 .nodes
                 .iter()
-                .find(|a| a.url == crate::note_url())
+                .find(|a| crate::linear::same_url(&a.url, &crate::note_url()))
                 .map(|a| &a.metadata);
             if current != Some(&meta) {
                 notes.push((id.clone(), subtitle, meta));

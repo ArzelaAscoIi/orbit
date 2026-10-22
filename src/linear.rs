@@ -495,45 +495,64 @@ impl Client {
 
     /// Creates or updates the ticket's one Orbit attachment. Creating
     /// it again answers "duplicate url" when it already exists, so an
-    /// existing one is updated by id.
+    /// existing one is updated by id. Linear's url filter misses notes it
+    /// stored spelled a little differently, so the lookup reads the
+    /// ticket's attachments and compares them here.
     pub async fn save_note(&self, issue_id: &str, subtitle: &str, metadata: &Value) -> Result<()> {
         let url = crate::note_url();
+        let input = json!({ "title": crate::NAME, "subtitle": subtitle, "metadata": metadata });
+        if let Some(id) = self.note_id(issue_id, &url).await? {
+            return self.update_note(&id, &input).await;
+        }
+        let query = "mutation($input: AttachmentCreateInput!) {
+            attachmentCreate(input: $input) { success }
+        }";
+        let mut create = input.clone();
+        create["issueId"] = json!(issue_id);
+        create["url"] = json!(url);
+        match self.query::<Value>(query, json!({ "input": create })).await {
+            Ok(data) if data["attachmentCreate"]["success"] == true => Ok(()),
+            Ok(_) => bail!("Linear did not save the Orbit note"),
+            // Another copy of the app made it meanwhile, or Linear keeps
+            // it where the lookup cannot see it: update it if it shows up
+            // now, else the note is there and nothing is wrong.
+            Err(error) if error.to_string().contains("duplicate url") => {
+                match self.note_id(issue_id, &url).await? {
+                    Some(id) => self.update_note(&id, &input).await,
+                    None => Ok(()),
+                }
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    /// The id of the ticket's Orbit attachment, if it has one.
+    async fn note_id(&self, issue_id: &str, url: &str) -> Result<Option<String>> {
         let found: Value = self
             .query(
-                "query($id: String!, $url: String!) {
-                    issue(id: $id) { attachments(filter: { url: { eq: $url } }) { nodes { id } } }
+                "query($id: String!) {
+                    issue(id: $id) { attachments(first: 100) { nodes { id url } } }
                 }",
-                json!({ "id": issue_id, "url": url }),
+                json!({ "id": issue_id }),
             )
             .await?;
-        let saved = match found["issue"]["attachments"]["nodes"][0]["id"].as_str() {
-            Some(id) => {
-                let query = "mutation($id: String!, $input: AttachmentUpdateInput!) {
-                    attachmentUpdate(id: $id, input: $input) { success }
-                }";
-                let input =
-                    json!({ "title": crate::NAME, "subtitle": subtitle, "metadata": metadata });
-                let data: Value = self
-                    .query(query, json!({ "id": id, "input": input }))
-                    .await?;
-                data["attachmentUpdate"]["success"] == true
-            }
-            None => {
-                let query = "mutation($input: AttachmentCreateInput!) {
-                    attachmentCreate(input: $input) { success }
-                }";
-                let input = json!({ "input": {
-                    "issueId": issue_id,
-                    "url": url,
-                    "title": crate::NAME,
-                    "subtitle": subtitle,
-                    "metadata": metadata,
-                }});
-                let data: Value = self.query(query, input).await?;
-                data["attachmentCreate"]["success"] == true
-            }
-        };
-        if !saved {
+        Ok(found["issue"]["attachments"]["nodes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|a| a["url"].as_str().is_some_and(|u| same_url(u, url)))
+            .and_then(|a| a["id"].as_str())
+            .map(str::to_owned))
+    }
+
+    async fn update_note(&self, id: &str, input: &Value) -> Result<()> {
+        let query = "mutation($id: String!, $input: AttachmentUpdateInput!) {
+            attachmentUpdate(id: $id, input: $input) { success }
+        }";
+        let data: Value = self
+            .query(query, json!({ "id": id, "input": input }))
+            .await?;
+        if data["attachmentUpdate"]["success"] != true {
             bail!("Linear did not save the Orbit note");
         }
         Ok(())
@@ -1122,6 +1141,23 @@ pub(crate) fn ticket_number(term: &str) -> Option<(Option<String>, u64)> {
     }
 }
 
+/// Two URLs naming the same page: scheme, `www.`, case and a trailing
+/// slash aside.
+pub fn same_url(a: &str, b: &str) -> bool {
+    let key = |u: &str| {
+        let u = u.trim().to_lowercase();
+        let u = u
+            .split_once("://")
+            .map_or(u.as_str(), |(_, rest)| rest)
+            .to_owned();
+        u.strip_prefix("www.")
+            .unwrap_or(&u)
+            .trim_end_matches('/')
+            .to_owned()
+    };
+    key(a) == key(b)
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -1191,6 +1227,57 @@ mod tests {
         };
         assert!(parent(None).check().is_ok());
         assert!(parent(Some("DEV-2")).check().is_err());
+    }
+
+    #[test]
+    fn a_note_url_matches_however_linear_spelled_it() {
+        let note = "https://github.com/acme/orbit-notes";
+        assert!(same_url("https://github.com/acme/orbit-notes/", note));
+        assert!(same_url("http://www.GitHub.com/Acme/orbit-notes", note));
+        assert!(!same_url("https://github.com/acme/orbit-notes-2", note));
+        assert!(!same_url("https://github.com/acme/orbit/pull/1", note));
+    }
+
+    /// A create that answers "duplicate url" finds the note again and
+    /// updates it; when it still cannot see it, the save is not an error.
+    #[tokio::test]
+    async fn a_duplicate_note_is_updated_not_reported() {
+        let note = crate::note_url();
+        for (found, calls) in [(format!("{note}/"), 4), ("https://example.com".into(), 3)] {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let url = format!("http://{}/graphql", listener.local_addr().unwrap());
+            let empty = r#"{"data":{"issue":{"attachments":{"nodes":[]}}}}"#.to_owned();
+            let answers = [
+                empty,
+                r#"{"errors":[{"message":"duplicate url"}]}"#.to_owned(),
+                format!(
+                    r#"{{"data":{{"issue":{{"attachments":{{"nodes":[{{"id":"a1","url":"{found}"}}]}}}}}}}}"#
+                ),
+                r#"{"data":{"attachmentUpdate":{"success":true}}}"#.to_owned(),
+            ];
+            let server = std::thread::spawn(move || {
+                let mut bodies = Vec::new();
+                for answer in answers.iter().take(calls) {
+                    let (mut stream, _) = listener.accept().unwrap();
+                    bodies.push(read_request(&mut stream));
+                    let reply = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{answer}",
+                        answer.len()
+                    );
+                    stream.write_all(reply.as_bytes()).unwrap();
+                }
+                bodies
+            });
+            Client::at(&url)
+                .save_note("u1", "sub", &json!({}))
+                .await
+                .unwrap();
+            let bodies = server.join().unwrap();
+            assert_eq!(bodies.len(), calls);
+            if calls == 4 {
+                assert!(bodies[3].contains(r#""id":"a1""#), "{}", bodies[3]);
+            }
+        }
     }
 
     /// A move asks for the ticket's team states, then sets the one named;

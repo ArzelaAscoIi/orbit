@@ -955,6 +955,14 @@ pub const STEPS: &[Step] = &[
          press Cmd+S; a key typed here moves to the Keychain and reads SAVED.",
     ),
     step(
+        Some("settings"),
+        None,
+        "Settings",
+        "settings at the right end of the bar opens Settings: keys, connected tools, theme, \
+         updates and settings.json. Cmd+, does the same from anywhere; click it again or press \
+         Esc to close.",
+    ),
+    step(
         Some("feedback"),
         None,
         "Feedback",

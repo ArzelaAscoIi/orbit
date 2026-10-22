@@ -336,3 +336,4 @@
 2026-10-22 · ticket · Descriptions and comments read like Linear: GFM tables rende => test:a_gfm_table_parses_into_rows_without_its_separator; test:mentions_are_linear_tickets_and_github_prs; test:a_ticket_link_becomes_a_chip_that_still_clicks_through
 2026-10-21 · bar · Settings has a link at the right end of the bottom bar (⚙ se => test:the_bars_settings_link_opens_settings_and_closes_it_again; code:src/ui/bar.rs:mark(app, ui, "settings", settings.rect);
 2026-10-22 · ktlo · Land approved's count is only the PRs its click acts on (gre => test:land_approved_merges_green_waits_on_checks_and_lands_the_rest; code:src/ui/list.rs:app.land_plan(&p.url, &g.head); code:src/app/actions.rs:fn handed(step: Land, in_session: bool)
+2026-10-23 · sessions · Orbit ends the attach terminals nobody looks at every 10 min => test:only_the_agent_view_is_picked_never_a_json_list_or_a_session; code:src/app/mod.rs:self.claude.release_viewers(&in_front);

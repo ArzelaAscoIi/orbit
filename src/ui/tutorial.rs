@@ -194,8 +194,9 @@ pub const STEPS: &[Step] = &[
         Some("brief"),
         Some(View::ForYou),
         "The brief",
-        "With an Anthropic key, Claude reads the board and writes the one thing that matters \
-         right now, on top of For you. Click it to go there.",
+        "Claude reads the board and writes the one thing that matters right now, on top of \
+         For you. Click it to go there. It runs on your Claude Code login, or on an \
+         Anthropic key when one is set in Settings.",
     ),
     step(
         Some("onboarding"),
@@ -210,8 +211,8 @@ pub const STEPS: &[Step] = &[
         Some("list"),
         Some(View::Customers),
         "Customers",
-        "What is going on per customer, with a one-line summary once an Anthropic key is \
-         set. Enter or a click shows their tickets.",
+        "What is going on per customer, with a one-line summary from Claude. Enter or a \
+         click shows their tickets.",
     ),
     step(
         Some("list"),

@@ -54,6 +54,8 @@ the one move it needs, with the buttons to make it:
   replies and resolves. Nothing merges on its own.
 - The description with images and formatting, who opened it, where it came from, and a
   reply box that posts to Linear.
+- Descriptions read like Linear: tables as a grid, ticket and PR links as chips with
+  their title, and a calm text column.
 
 ### Review PRs like a reviewer sits next to you
 

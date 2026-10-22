@@ -240,12 +240,28 @@ pub(super) fn progress(ui: &mut Ui, finished: usize, total: usize, height: f32) 
 /// italics, `code` and links. Lines stay short enough to read.
 pub(super) fn markdown(ui: &mut Ui, text: &str) {
     ui.scope(|ui| {
-        ui.set_max_width(ui.available_width().min(760.0));
-        ui.spacing_mut().item_spacing.y = 5.0;
+        // A readable column, as Linear's: tables may use the whole width.
+        let whole = ui.available_width();
+        ui.set_max_width(whole.min(700.0));
+        ui.spacing_mut().item_spacing.y = 6.0;
         let body = ui.style().text_styles[&egui::TextStyle::Body].size;
         let mut code: Option<Vec<&str>> = None;
-        for line in text.lines() {
+        let lines: Vec<&str> = text.lines().collect();
+        let mut at = 0;
+        while at < lines.len() {
+            let line = lines[at];
+            at += 1;
             let trimmed = line.trim();
+            if code.is_none()
+                && trimmed.starts_with('|')
+                && let Some(rows) = table_rows(&lines[at - 1..])
+            {
+                at += rows.len(); // the rows after the first, plus the separator
+                ui.add_space(4.0);
+                table(ui, &rows, body, whole);
+                ui.add_space(4.0);
+                continue;
+            }
             if trimmed.starts_with("```") {
                 match code.take() {
                     Some(lines) => code_block(ui, &lines),
@@ -267,7 +283,7 @@ pub(super) fn markdown(ui: &mut Ui, text: &str) {
             }
             let indent = (line.len() - line.trim_start().len()) as f32 * 4.0;
             if trimmed.is_empty() {
-                ui.add_space(3.0);
+                ui.add_space(4.0);
             } else if trimmed == "---" || trimmed == "***" {
                 ui.add_space(4.0);
                 let x = ui.max_rect().x_range();
@@ -276,10 +292,15 @@ pub(super) fn markdown(ui: &mut Ui, text: &str) {
                 ui.add_space(6.0);
             } else if trimmed.starts_with('#') {
                 let level = trimmed.chars().take_while(|&c| c == '#').count();
-                let size = if level <= 2 { body + 3.5 } else { body + 1.5 };
-                ui.add_space(8.0);
+                let (size, above) = if level <= 2 {
+                    (body + 4.0, 14.0)
+                } else {
+                    (body + 2.0, 10.0)
+                };
+                ui.add_space(above);
                 let heading = trimmed.trim_start_matches('#').trim();
                 md_label(ui, heading, size, p().text, true);
+                ui.add_space(2.0);
             } else if let Some(item) = trimmed
                 .strip_prefix("- ")
                 .or_else(|| trimmed.strip_prefix("* "))
@@ -306,6 +327,130 @@ pub(super) fn markdown(ui: &mut Ui, text: &str) {
         }
         if let Some(lines) = code {
             code_block(ui, &lines);
+        }
+    });
+}
+
+/// A GFM table starting at `lines[0]`: its rows (the header first) as
+/// cells, when `lines[1]` is the `| --- | --- |` separator. The returned
+/// rows leave out the separator, so a table took `rows.len() + 1` lines.
+// ponytail: a `|` inside inline code splits the cell; tickets rarely do that.
+fn table_rows(lines: &[&str]) -> Option<Vec<Vec<String>>> {
+    let cells = |line: &str| -> Vec<String> {
+        let inner = line.trim().trim_start_matches('|').trim_end_matches('|');
+        inner.split('|').map(|c| c.trim().to_owned()).collect()
+    };
+    let separator = lines.get(1)?.trim();
+    let is_separator = separator.starts_with('|')
+        && separator.contains('-')
+        && separator
+            .chars()
+            .all(|c| matches!(c, '|' | '-' | ':' | ' '));
+    if !is_separator {
+        return None;
+    }
+    let mut rows = vec![cells(lines[0])];
+    rows.extend(
+        lines[2..]
+            .iter()
+            .take_while(|l| l.trim().starts_with('|'))
+            .map(|l| cells(l)),
+    );
+    Some(rows)
+}
+
+/// Column widths for a table `total` wide: each column as wide as its
+/// widest cell when they fit; else the narrow ones keep theirs and the
+/// wide ones share what is left, in proportion.
+fn column_widths(natural: &[f32], total: f32) -> Vec<f32> {
+    if natural.iter().sum::<f32>() <= total {
+        return natural.to_vec();
+    }
+    let share = total / natural.len().max(1) as f32;
+    let narrow: f32 = natural.iter().filter(|w| **w <= share).sum();
+    let wide: f32 = natural.iter().filter(|w| **w > share).sum();
+    let room = (total - narrow).max(0.0);
+    natural
+        .iter()
+        .map(|w| if *w <= share { *w } else { w / wide * room })
+        .collect()
+}
+
+/// A table as Linear draws one: hairline cells, the header row tinted,
+/// text wrapping inside its column.
+fn table(ui: &mut Ui, rows: &[Vec<String>], size: f32, width: f32) {
+    let columns = rows.iter().map(Vec::len).max().unwrap_or(0);
+    if columns == 0 {
+        return;
+    }
+    let pad = egui::vec2(9.0, 6.0);
+    let natural: Vec<f32> = (0..columns)
+        .map(|c| {
+            rows.iter()
+                .filter_map(|row| row.get(c))
+                .map(|cell| {
+                    let (job, _) = inline_links(cell, size, p().text, false);
+                    egui::WidgetText::from(job)
+                        .into_galley(
+                            ui,
+                            Some(egui::TextWrapMode::Extend),
+                            f32::INFINITY,
+                            egui::TextStyle::Body,
+                        )
+                        .size()
+                        .x
+                })
+                .fold(0.0, f32::max)
+                + 2.0 * pad.x
+                + 1.0
+        })
+        .collect();
+    let widths = column_widths(&natural, width);
+    let table_width: f32 = widths.iter().sum();
+    ui.scope(|ui| {
+        ui.spacing_mut().item_spacing = egui::vec2(0.0, 0.0);
+        for (r, row) in rows.iter().enumerate() {
+            let tint = ui.painter().add(egui::Shape::Noop);
+            let top = ui.cursor().min;
+            let height = ui
+                .horizontal_top(|ui| {
+                    for (c, w) in widths.iter().enumerate() {
+                        let cell = row.get(c).map(String::as_str).unwrap_or_default();
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(*w, 0.0),
+                            Layout::top_down(Align::Min),
+                            |ui| {
+                                ui.set_width(*w);
+                                Frame::new()
+                                    .inner_margin(Margin::symmetric(pad.x as i8, pad.y as i8))
+                                    .show(ui, |ui| {
+                                        ui.set_width(*w - 2.0 * pad.x);
+                                        let color = if r == 0 { p().text_2 } else { p().text };
+                                        md_label(ui, cell, size, color, r == 0);
+                                    });
+                            },
+                        );
+                    }
+                })
+                .response
+                .rect
+                .height();
+            let rect = egui::Rect::from_min_size(top, egui::vec2(table_width, height));
+            let painter = ui.painter();
+            if r == 0 {
+                painter.set(tint, egui::Shape::rect_filled(rect, 0.0, p().side));
+            }
+            painter.rect_stroke(
+                rect,
+                0.0,
+                Stroke::new(1.0, p().line),
+                egui::StrokeKind::Inside,
+            );
+            let mut x = rect.left();
+            for w in &widths[..widths.len() - 1] {
+                x += w;
+                painter.vline(x, rect.y_range(), Stroke::new(1.0, p().line));
+            }
         }
     });
 }
@@ -408,10 +553,13 @@ fn inline_links(
             italics: italic,
             ..Default::default()
         };
+        // Room between lines, as Linear's 1.5 line height.
+        format.line_height = Some((size * 1.5).round());
         if code {
             format.font_id = egui::FontId::monospace(size - 1.5);
             format.color = p().text_2;
             format.background = p().sel;
+            format.expand_bg = 2.0;
         }
         if link {
             format.underline = Stroke::new(1.0, p().text_3);
@@ -445,11 +593,16 @@ fn inline_links(
                 match (rest.find("]("), rest.find(')')) {
                     (Some(mid), Some(end)) if mid < end => {
                         flush(&mut job, &mut run, (bold, italic, code, false));
-                        run.push_str(&rest[1..mid]);
+                        let url = &rest[mid + 2..end];
                         let from = job.text.chars().count();
-                        let to = from + run.chars().count();
-                        links.push((from..to, rest[mid + 2..end].to_owned()));
-                        flush(&mut job, &mut run, (bold, italic, code, true));
+                        if let Some(chip) = mention_chip(url, crate::story::mention) {
+                            mention_job(&mut job, &chip, size);
+                        } else {
+                            run.push_str(&rest[1..mid]);
+                            flush(&mut job, &mut run, (bold, italic, code, true));
+                        }
+                        let to = job.text.chars().count();
+                        links.push((from..to, url.to_owned()));
                         while chars.peek().is_some_and(|(j, _)| *j <= i + end) {
                             chars.next();
                         }
@@ -462,6 +615,102 @@ fn inline_links(
     }
     flush(&mut job, &mut run, (bold, italic, code, false));
     (job, links)
+}
+
+/// A link to a Linear ticket or a GitHub PR, drawn as Linear draws a
+/// mention: its icon, its id and, when the board knows it, its title.
+#[derive(Debug, PartialEq)]
+struct Mention {
+    pr: bool,
+    id: String,
+    title: Option<String>,
+    done: bool,
+}
+
+/// The mention `url` points at, if it is a ticket (`…/issue/ABC-123/…`)
+/// or a PR (`https://github.com/o/r/pull/7`); `known` gives a title and
+/// whether it is done, by identifier or by PR URL.
+fn mention_chip(url: &str, known: impl Fn(&str) -> Option<(String, bool)>) -> Option<Mention> {
+    if let Some(rest) = url.strip_prefix("https://linear.app/") {
+        let id = rest
+            .split("/issue/")
+            .nth(1)?
+            .split(['/', '#', '?'])
+            .next()?;
+        let (prefix, number) = id.split_once('-')?;
+        if prefix.is_empty() || number.is_empty() || !number.chars().all(|c| c.is_ascii_digit()) {
+            return None;
+        }
+        let id = id.to_uppercase();
+        let found = known(&id);
+        return Some(Mention {
+            pr: false,
+            done: found.as_ref().is_some_and(|(_, done)| *done),
+            title: found.map(|(title, _)| title),
+            id,
+        });
+    }
+    let path = url.strip_prefix("https://github.com/")?;
+    let parts: Vec<&str> = path.split(['/', '#', '?']).collect();
+    let [owner, repo, "pull", number, ..] = parts.as_slice() else {
+        return None;
+    };
+    if !number.chars().all(|c| c.is_ascii_digit()) || number.is_empty() {
+        return None;
+    }
+    let found = known(&format!("https://github.com/{owner}/{repo}/pull/{number}"));
+    let id = format!("{repo}#{number}");
+    Some(Mention {
+        pr: true,
+        done: found.as_ref().is_some_and(|(_, done)| *done),
+        // GitHub's attachment title is often just `owner/repo#n`: no title then.
+        title: found.map(|(title, _)| title).filter(|t| !t.ends_with(&id)),
+        id,
+    })
+}
+
+/// A mention appended to a line: icon, mono id, title cut to fit a line,
+/// on a tinted ground (square, as everything here).
+fn mention_job(job: &mut egui::text::LayoutJob, chip: &Mention, size: f32) {
+    use egui_phosphor::regular as icon;
+    let glyph = match (chip.pr, chip.done) {
+        (true, true) => icon::GIT_MERGE,
+        (true, false) => icon::GIT_PULL_REQUEST,
+        (false, true) => icon::CHECK_CIRCLE,
+        (false, false) => icon::CIRCLE_HALF,
+    };
+    let base = egui::TextFormat {
+        font_id: egui::FontId::proportional(size),
+        color: p().text,
+        background: p().sel,
+        expand_bg: 2.0,
+        line_height: Some((size * 1.5).round()),
+        ..Default::default()
+    };
+    let mark = if chip.done { p().success } else { p().signal };
+    job.append(
+        &format!("{glyph} "),
+        0.0,
+        egui::TextFormat {
+            color: mark,
+            ..base.clone()
+        },
+    );
+    let id = egui::TextFormat {
+        font_id: egui::FontId::monospace(size - 1.5),
+        color: p().text_2,
+        ..base.clone()
+    };
+    job.append(&chip.id, 0.0, id);
+    if let Some(title) = &chip.title {
+        let cut: String = title.chars().take(60).collect();
+        let more = if title.chars().count() > 60 {
+            "…"
+        } else {
+            ""
+        };
+        job.append(&format!(" {cut}{more}"), 0.0, base);
+    }
 }
 
 /// The images in a markdown line, `![alt](url)`: each one's byte range
@@ -1126,16 +1375,95 @@ mod tests {
     #[test]
     fn a_markdown_link_keeps_where_it_is_and_its_url() {
         let (job, links) = inline_links(
-            "See [ABC-1](https://linear.app/x/issue/ABC-1/y) now",
+            "See [the docs](https://x.io/docs) now",
             13.0,
             Color32::WHITE,
             false,
         );
-        assert_eq!(job.text, "See ABC-1 now");
-        assert_eq!(
-            links,
-            [(4..9, "https://linear.app/x/issue/ABC-1/y".to_owned())]
+        assert_eq!(job.text, "See the docs now");
+        assert_eq!(links, [(4..12, "https://x.io/docs".to_owned())]);
+    }
+
+    #[test]
+    fn a_ticket_link_becomes_a_chip_that_still_clicks_through() {
+        let url = "https://linear.app/x/issue/ABC-1/y";
+        let (job, links) = inline_links(
+            &format!("See [ABC-1]({url}) now"),
+            13.0,
+            Color32::WHITE,
+            false,
         );
+        // Unknown to the board: icon and id only, the click goes to the URL.
+        assert_eq!(job.text, "See \u{e18c} ABC-1 now");
+        assert_eq!(links, [(4..11, url.to_owned())]);
+    }
+
+    #[test]
+    fn mentions_are_linear_tickets_and_github_prs() {
+        let known = |key: &str| match key {
+            "WEB-7" => Some(("Saved views".to_owned(), true)),
+            "https://github.com/acme/web/pull/322" => Some(("Add saved views".to_owned(), false)),
+            "https://github.com/acme/api/pull/207" => Some(("acme/api#207".to_owned(), true)),
+            _ => None,
+        };
+        let chip = mention_chip("https://linear.app/acme/issue/web-7/saved-views", known).unwrap();
+        assert_eq!(
+            (chip.pr, chip.id.as_str(), chip.title.as_deref(), chip.done),
+            (false, "WEB-7", Some("Saved views"), true)
+        );
+        let chip = mention_chip("https://github.com/acme/web/pull/322/files", known).unwrap();
+        assert_eq!(
+            (chip.pr, chip.id.as_str(), chip.title.as_deref(), chip.done),
+            (true, "web#322", Some("Add saved views"), false)
+        );
+        // A title that only repeats the id is no title.
+        let chip = mention_chip("https://github.com/acme/api/pull/207", known).unwrap();
+        assert_eq!((chip.title, chip.done), (None, true));
+        // Unknown id: still a chip, id only.
+        let chip = mention_chip("https://linear.app/acme/issue/OPS-12", known).unwrap();
+        assert_eq!((chip.id.as_str(), chip.title), ("OPS-12", None));
+        for plain in [
+            "https://linear.app/acme/project/roadmap",
+            "https://linear.app/acme/issue/nonsense",
+            "https://github.com/acme/web/issues/3",
+            "https://x.io",
+        ] {
+            assert!(mention_chip(plain, known).is_none(), "{plain}");
+        }
+    }
+
+    #[test]
+    fn a_gfm_table_parses_into_rows_without_its_separator() {
+        let lines = [
+            "| Time | What |",
+            "| :-- | --: |",
+            "| 09:40 | alert for `GET /v1` |",
+            "| 11:05 | see [WEB-1](https://linear.app/a/issue/WEB-1) |",
+            "after the table",
+        ];
+        let rows = table_rows(&lines).unwrap();
+        assert_eq!(
+            rows,
+            [
+                vec!["Time", "What"],
+                vec!["09:40", "alert for `GET /v1`"],
+                vec!["11:05", "see [WEB-1](https://linear.app/a/issue/WEB-1)"],
+            ]
+        );
+        assert!(table_rows(&["| just a pipe |", "text"]).is_none());
+        assert!(table_rows(&["| one line |"]).is_none());
+    }
+
+    #[test]
+    fn table_columns_fit_their_content_and_wide_ones_share_the_rest() {
+        assert_eq!(column_widths(&[50.0, 200.0], 700.0), [50.0, 200.0]);
+        let widths = column_widths(&[50.0, 600.0, 900.0], 700.0);
+        assert_eq!(widths[0], 50.0);
+        assert!(
+            (widths.iter().sum::<f32>() - 700.0).abs() < 0.5,
+            "{widths:?}"
+        );
+        assert!(widths[2] > widths[1]);
     }
 
     #[test]

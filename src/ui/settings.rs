@@ -327,9 +327,11 @@ fn connections(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
         ),
         (
             "Anthropic",
-            saved(app.has_anthropic_key(), "key"),
+            // No key: Claude Code's login answers through `claude -p`.
+            saved(app.has_own_anthropic_key(), "key")
+                .or_else(|| Some("through Claude Code's login".to_owned())),
             "briefs, short names, walkthroughs, questions about PRs, test plans, New ticket",
-            "paste a key",
+            "none needed with Claude Code signed in; else paste a key",
             Some((Secret::Anthropic, "sk-ant-…")),
         ),
         (

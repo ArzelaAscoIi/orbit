@@ -1571,8 +1571,11 @@ impl App {
             return;
         };
         for pr in card.prs.iter().filter(|pr| {
-            (pr.open && !self.merged.contains_key(&pr.url))
-                || (pr.merged && !self.gates.contains_key(&pr.url))
+            wants_gate(
+                pr,
+                self.merged.contains_key(&pr.url),
+                self.gates.contains_key(&pr.url),
+            )
         }) {
             self.send(Command::Gate {
                 url: pr.url.clone(),
@@ -2811,8 +2814,32 @@ pub fn started_state(age: Option<std::time::Duration>, working: bool) -> Started
     }
 }
 
+/// Whether to ask GitHub about a PR again: an open one always, a merged
+/// one once. A merge made here counts as merged, so its gate (MERGED) comes
+/// back and moves a PR-only card to done (`pr_known`).
+fn wants_gate(pr: &Pr, merged_here: bool, has_gate: bool) -> bool {
+    (pr.open && !merged_here) || ((pr.merged || merged_here) && !has_gate)
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_pr_merged_here_is_asked_about_once_more() {
+        let card = crate::story::pr_card("https://github.com/o/r/pull/16", "t", "").unwrap();
+        let open = card.prs[0].clone();
+        // Open: always asked; merged here: once, so its card moves to done.
+        assert!(super::wants_gate(&open, false, true));
+        assert!(super::wants_gate(&open, true, false));
+        assert!(!super::wants_gate(&open, true, true));
+        let merged = crate::story::Pr {
+            open: false,
+            merged: true,
+            ..open
+        };
+        assert!(super::wants_gate(&merged, false, false));
+        assert!(!super::wants_gate(&merged, false, true));
+    }
+
     #[test]
     fn a_clicked_step_waits_then_runs_or_says_no_answer() {
         use std::time::Duration;

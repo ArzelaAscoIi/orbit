@@ -1372,7 +1372,7 @@ pub(super) fn tone(tone: crate::github::Tone) -> Color32 {
 pub(super) fn pr_verdict(app: &App, pr: &story::Pr, named: bool, draft_shown: bool, ui: &mut Ui) {
     let Some(Ok(gate)) = app.gates.get(&pr.url) else {
         // Never a blank: an open PR says it is being asked about.
-        if pr.open && !app.gates.contains_key(&pr.url) {
+        if pr.open && !app.gates.contains_key(&pr.url) && !app.merged.contains_key(&pr.url) {
             ui.label(label("checking with GitHub whether it can be merged…"));
         }
         return;

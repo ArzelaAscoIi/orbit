@@ -265,6 +265,8 @@ fn clone_chat(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
         .collect();
     let panel = egui::Panel::right("clone-chat")
         .default_size(520.0)
+        // Never dragged down to a sliver that reads as closed.
+        .size_range(320.0..=1400.0)
         .resizable(true)
         .frame(
             Frame::new()

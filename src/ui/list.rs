@@ -1484,19 +1484,55 @@ fn batch(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
         hairline(ui);
     }
     if !approved.is_empty() {
+        // The same plan the click runs, so the count is what it lands.
+        let plans: Vec<(String, String, crate::app::Land)> = approved
+            .iter()
+            .map(|(_, p, g)| {
+                (
+                    p.url.clone(),
+                    g.head.clone(),
+                    app.land_plan(&p.url, &g.head),
+                )
+            })
+            .collect();
+        let land: Vec<(String, String)> = plans
+            .iter()
+            .filter(|(_, _, plan)| plan.acts())
+            .map(|(url, head, _)| (url.clone(), head.clone()))
+            .collect();
+        let on_way = plans
+            .iter()
+            .filter(|(_, _, plan)| *plan == crate::app::Land::Merging)
+            .count();
+        let held: Vec<&str> = plans
+            .iter()
+            .filter_map(|(_, _, plan)| match plan {
+                crate::app::Land::Skip(why) => Some(why.as_str()),
+                _ => None,
+            })
+            .collect();
         pad(ui, |ui| {
-            let land: Vec<(String, String)> = approved
-                .iter()
-                .map(|(_, p, g)| (p.url.clone(), g.head.clone()))
-                .collect();
-            let button = primary(ui, &format!("Land approved ({})", land.len())).on_hover_text(
-                "Merges each approved PR that is green at the head shown, sets Merge when ready \
-                 on the ones whose checks still run, and starts one session with a goal to make \
-                 the rest mergeable (it never merges).",
-            );
-            if button.clicked() {
-                actions.push(Action::LandBatch(land));
-            }
+            ui.horizontal(|ui| {
+                if !land.is_empty() {
+                    let button = primary(ui, &format!("Land approved ({})", land.len()))
+                        .on_hover_text(
+                            "Merges the green ones now, sets Merge when ready where checks \
+                             still run, and starts one session that makes the rest mergeable.",
+                        );
+                    if button.clicked() {
+                        actions.push(Action::LandBatch(land.clone()));
+                    }
+                }
+                if on_way > 0 {
+                    ui.label(label(&format!("{on_way} on their way")).color(p().text_3));
+                }
+                if !held.is_empty() {
+                    ui.label(
+                        label(&format!("{} held: {}", held.len(), held.join(", ")))
+                            .color(p().text_3),
+                    );
+                }
+            });
         });
         hairline(ui);
     }

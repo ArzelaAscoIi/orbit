@@ -103,9 +103,10 @@ You fixed a bug or built a feature in the fork that every team could use:
 make upstream C="3f2a1bc 9d8e7f6"
 ```
 
-It cherry-picks those commits onto upstream's main in a new branch, and
-refuses when one of them touches the overlay or when the change or its
-message matches `UPSTREAM_DENY`. Then it runs `make check`, pushes the
+It cherry-picks those commits onto upstream's main in a new branch (authored
+by your identity for upstream, never the fork's authors), and
+refuses when one of them touches the overlay or when the change, its
+message or its author matches `UPSTREAM_DENY`. Then it runs `make check`, pushes the
 branch upstream and opens the PR. Once upstream merges it, the next
 `make sync` brings it back as the same change.
 

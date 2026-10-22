@@ -86,9 +86,12 @@ case "${1:-}" in
       echo "Conflict. Resolve, git cherry-pick --continue, then: make check && git push -u $remote $branch" >&2
       exit 1
     fi
+    # Upstream gets your identity for this repo (e.g. a noreply address),
+    # never the fork's authors and their work emails.
+    git rebase -q --exec 'git commit -q --amend --no-edit --reset-author' "$remote/main"
     if [ -n "$deny" ]; then
       # perl, not grep: \b and friends mean the same on macOS and Linux.
-      leaks=$( { git diff "$remote/main"..HEAD | grep '^+' || true; git log "$remote/main"..HEAD --format=%B; } \
+      leaks=$( { git diff "$remote/main"..HEAD | grep '^+' || true; git log "$remote/main"..HEAD --format='%an %ae %cn %ce%n%B'; } \
         | perl -e 'open my $f, "<", shift or die "no $ARGV[0]\n"; my @p = grep { length } map { chomp; $_ } <$f>;
                    while (my $l = <STDIN>) { for my $p (@p) { if ($l =~ /$p/i) { print "$p: $l"; last } } }' "$words")
       if [ -n "$leaks" ]; then

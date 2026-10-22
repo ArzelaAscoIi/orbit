@@ -660,11 +660,6 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                         if closes_here(card, app.is_mine(card)) {
                             mark_done(app, card, "Mark done", ui, actions);
                         }
-                        // Several PRs: one Fix for what blocks any of them (one
-                        // PR has it among its buttons).
-                        if many {
-                            fix_button(app, card, false, ui, actions);
-                        }
                         // The bot's step: here in this ticket's Claude session, or,
                         // where the profile names the bot's command for it, remotely.
                         // In review, Fix is the step: among the PR's buttons.
@@ -896,12 +891,12 @@ fn pr_buttons(
         }
         return;
     }
-    // One PR on the card: what it needs next is the one filled button,
-    // first in the row. Several share one look (`lead_of`).
-    let one = card.prs.len() == 1;
-    let lead = if one { lead_of(app, pr) } else { None };
-    if one && lead == Some(Lead::Fix) {
-        fix_button(app, card, true, ui, actions);
+    // What the PR needs next is its row's filled button, first in the row;
+    // with several PRs, each row has its own (`lead_of`), and Fix covers
+    // only that PR.
+    let lead = lead_of(app, pr);
+    if lead == Some(Lead::Fix) {
+        fix_button(app, card, Some(pr), true, ui, actions);
     }
     ready_pr(app, pr, lead, ui, actions);
     approve(app, pr, lead, ui, actions);
@@ -913,8 +908,8 @@ fn pr_buttons(
             open_review(pr, ui, actions);
         }
     }
-    if one && lead != Some(Lead::Fix) {
-        fix_button(app, card, false, ui, actions);
+    if lead != Some(Lead::Fix) {
+        fix_button(app, card, Some(pr), false, ui, actions);
     }
     update_branch(app, pr, ui, actions);
     land_it(app, pr, ui, actions);
@@ -1771,14 +1766,21 @@ fn fix_run(parts: &[FixPart], build: &str, fix_comments: &str, id: &str) -> (Str
     }
 }
 
-/// Fix: everything that blocks the card's open PRs, as one button; its ▾
-/// runs one part alone when there are several. `lead`: the row's filled
-/// button.
-fn fix_button(app: &App, card: &Card, lead: bool, ui: &mut Ui, actions: &mut Vec<Action>) {
+/// Fix: everything that blocks the card's open PRs (or `only` one of them,
+/// on its own row), as one button; its ▾ runs one part alone when there
+/// are several. `lead`: the row's filled button.
+fn fix_button(
+    app: &App,
+    card: &Card,
+    only: Option<&story::Pr>,
+    lead: bool,
+    ui: &mut Ui,
+    actions: &mut Vec<Action>,
+) {
     let prs: Vec<(&str, &crate::github::Gate)> = card
         .prs
         .iter()
-        .filter(|pr| pr.open)
+        .filter(|pr| pr.open && only.is_none_or(|o| o.url == pr.url))
         .filter_map(|pr| match app.gates.get(&pr.url) {
             Some(Ok(gate)) => Some((pr.url.as_str(), gate)),
             _ => None,
@@ -2738,6 +2740,14 @@ mod tests {
             lead(&gate(|g| g.queue_failed = "checks_failed".into()), false),
             Some(Lead::Fix)
         );
+        // The user's own approved PR with red checks, on any card, even a
+        // blocked one with several PRs: Fix fills its row (Land it next to it).
+        let approved_red = gate(|g| {
+            g.own = true;
+            g.review = "APPROVED".into();
+            g.checks = "FAILURE".into();
+        });
+        assert_eq!(lead(&approved_red, false), Some(Lead::Fix));
         // The user's own PR without approval: the AI review, else a person.
         let own = gate(|g| {
             g.own = true;

@@ -1386,6 +1386,12 @@ pub(super) fn bottom(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
                     ui.add_space(12.0);
+                    let settings = link(ui, label("⚙ settings")).on_hover_text("Settings (⌘,)");
+                    mark(app, ui, "settings", settings.rect);
+                    if settings.clicked() {
+                        actions.push(settings_click(&app.view));
+                    }
+                    ui.add_space(14.0);
                     if link(ui, label("⌘K"))
                         .on_hover_text("Search and every action")
                         .clicked()
@@ -1447,6 +1453,15 @@ pub(super) fn bottom(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
             });
         });
     mark(app, ui, "bar", panel.response.rect);
+}
+
+/// The bar's settings link: opens Settings, or closes it when it is open.
+fn settings_click(view: &View) -> Action {
+    if *view == View::Settings {
+        Action::Sheet(false)
+    } else {
+        Action::Show(View::Settings)
+    }
 }
 
 /// One tab of the bottom bar.
@@ -1664,6 +1679,18 @@ mod tests {
             super::sidebar_order(&states, &repos, super::SORT_REPO),
             [2, 4, 0, 3, 1]
         );
+    }
+
+    #[test]
+    fn the_bars_settings_link_opens_settings_and_closes_it_again() {
+        assert!(matches!(
+            super::settings_click(&View::ForYou),
+            Action::Show(View::Settings)
+        ));
+        assert!(matches!(
+            super::settings_click(&View::Settings),
+            Action::Sheet(false)
+        ));
     }
 
     #[test]

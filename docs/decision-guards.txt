@@ -334,3 +334,4 @@
 2026-10-21 · settings · Orbit's own Claude helpers (brief, short names, customers, w => test:a_claude_code_reply_is_its_result_or_its_error; code:src/app/mod.rs:.unwrap_or_else(|| crate::anthropic::CLAUDE_CODE.into())
 2026-10-21 · sessions · A session that works on a ticket opens as that ticket, with => test:a_session_opens_as_the_ticket_its_folder_pr_or_note_names; code:src/app/actions.rs:Action::OpenSession(key) if let Some(id) = self.ticket_of_session(&key)
 2026-10-22 · ticket · Descriptions and comments read like Linear: GFM tables rende => test:a_gfm_table_parses_into_rows_without_its_separator; test:mentions_are_linear_tickets_and_github_prs; test:a_ticket_link_becomes_a_chip_that_still_clicks_through
+2026-10-21 · bar · Settings has a link at the right end of the bottom bar (⚙ se => test:the_bars_settings_link_opens_settings_and_closes_it_again; code:src/ui/bar.rs:mark(app, ui, "settings", settings.rect);

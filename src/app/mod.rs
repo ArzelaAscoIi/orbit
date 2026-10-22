@@ -852,6 +852,8 @@ pub struct App {
     pub laya_ready: bool,
     /// Whether the error on screen was logged already (activity.rs).
     logged_error: bool,
+    /// The last action by name, when its run of repeats began, how many.
+    repeat: (String, u64, u32),
     /// Why the profile in settings.json could not be read, and a bundle
     /// import on its way (profile.rs).
     pub profile_error: Option<String>,
@@ -1216,6 +1218,7 @@ impl App {
             laya_agreement: (0, 0),
             laya_ready: crate::laya::downloaded(&crate::laya::dir()),
             logged_error: false,
+            repeat: (String::new(), 0, 0),
             profile_error,
             profile_importing: false,
             profile_input: String::new(),
@@ -1828,6 +1831,36 @@ impl App {
         };
         let ctx = target(action).and_then(|t| self.situation(&t));
         self.log(&crate::activity::name(action), &detail, via, ctx);
+    }
+
+    /// The same key or click again and again is a sign it did nothing the
+    /// user could see: errors.log gets what the window looked like, to fix
+    /// it from later (2026-10-22: Cmd+J pressed 10 times, the panel hidden).
+    fn note_repeat(&mut self, action: &Action) {
+        let name = crate::activity::name(action);
+        let now = crate::activity::now_ms() as u64;
+        let (run, flag) = repeat_run(&self.repeat, &name, now);
+        self.repeat = run;
+        if flag {
+            note_error(
+                &store::data_dir(),
+                &format!(
+                    "repeated {name} {REPEATS} times in {}s: view {} tab {} window {}/{} \
+                     full screen {} zoomed {} sheet {} clone panel {} palette {} error {:?}",
+                    REPEAT_MS / 1000,
+                    crate::activity::name(&self.view),
+                    crate::activity::name(&self.tab),
+                    self.window + 1,
+                    self.windows.len(),
+                    self.full_screen,
+                    self.panes.zoomed,
+                    self.sheet,
+                    self.chat_open,
+                    self.palette.is_some(),
+                    self.error,
+                ),
+            );
+        }
     }
 
     fn log(&self, event: &str, detail: &str, via: &str, ctx: Option<serde_json::Value>) {
@@ -2681,6 +2714,7 @@ impl eframe::App for App {
         crate::ui::show(self, ui, &mut actions);
         for action in actions {
             self.log_action(&action, via);
+            self.note_repeat(&action);
             self.apply(action, &ctx);
         }
         // An error shows up: logged that it did, never what it says; what
@@ -3119,6 +3153,22 @@ fn unseen(known: &[String], seen: Option<&[String]>) -> Vec<String> {
         .collect()
 }
 
+/// The same action this many times within `REPEAT_MS` is noted once.
+const REPEATS: u32 = 4;
+const REPEAT_MS: u64 = 5_000;
+
+/// The run of repeats after `name` at `now`, and whether it just reached
+/// `REPEATS`. ponytail: any action counts; moving through a list with j/k
+/// can trip it too, a harmless line in errors.log.
+fn repeat_run(run: &(String, u64, u32), name: &str, now: u64) -> ((String, u64, u32), bool) {
+    let (last, since, n) = run;
+    if last == name && now.saturating_sub(*since) <= REPEAT_MS {
+        ((last.clone(), *since, n + 1), n + 1 == REPEATS)
+    } else {
+        ((name.to_owned(), now, 1), false)
+    }
+}
+
 /// One line per error the app showed, with when: activity.jsonl only says
 /// that one did. ponytail: never trimmed, errors are rare (once per showing).
 fn note_error(dir: &std::path::Path, error: &str) {
@@ -3135,6 +3185,22 @@ fn note_error(dir: &std::path::Path, error: &str) {
 
 #[cfg(test)]
 mod skills_seen_tests {
+    #[test]
+    fn the_same_action_four_times_in_five_seconds_is_noted_once() {
+        let mut run = (String::new(), 0, 0);
+        let mut noted = 0;
+        for t in [0, 300, 600, 900, 1200, 1500] {
+            let (next, flag) = super::repeat_run(&run, "ToggleChat", t);
+            run = next;
+            noted += usize::from(flag);
+        }
+        assert_eq!(noted, 1);
+        // Slower than that, or another action between: no note.
+        let (run, _) = super::repeat_run(&run, "ToggleChat", 9_000);
+        let (run, _) = super::repeat_run(&run, "Find", 9_100);
+        assert_eq!(run.2, 1);
+    }
+
     #[test]
     fn an_error_says_what_it_was_in_errors_log() {
         let dir = std::env::temp_dir().join(format!("orbit-errors-{}", std::process::id()));

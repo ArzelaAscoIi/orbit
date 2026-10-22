@@ -1183,6 +1183,11 @@ impl App {
             }
             Action::ToggleChat => {
                 self.chat_open = !self.chat_open;
+                // Full screen hides the panel: opening it leaves full screen.
+                if self.chat_open && self.full_screen {
+                    self.full_screen = false;
+                    self.panes.zoomed = false;
+                }
                 // Open with nothing to show: the latest chat, else a new one.
                 if self.chat_open && self.chat.is_none() {
                     let latest = self

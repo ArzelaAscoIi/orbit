@@ -436,7 +436,7 @@
    "identifier": "API-97",
    "title": "Slow /reports endpoint for large workspaces",
    "url": "https://linear.app/acme/issue/API-97",
-   "description": "/v1/reports takes 8 seconds for workspaces with 500+ reports.",
+   "description": "## TL;DR\n\nOn Monday the `/v1/reports` endpoint took **8 to 12 seconds** for workspaces with more than 500 reports. The query scans every report of the workspace because there is **no index on `(workspace_id, updated_at)`**. The 500s from empty dashboards are a different bug, fixed in [API-91](https://linear.app/acme/issue/API-91/api-returns-500-for-a-dashboard-with-no-widgets).\n\n## Timeline (Monday)\n\n| Time | What |\n| -- | -- |\n| ~09:10 | First customer report in support: the reports page spins for about 10 seconds. |\n| 09:40 | p95 latency alert fires for `GET /v1/reports`. It flaps for an hour and nobody picks it up. |\n| 11:05 | Root cause found: a full scan of `reports` for large workspaces ([acme/api#207](https://github.com/acme/api/pull/207) only fixed the 500s). |\n| 12:30 | Hotfix merged: page size capped at 100 ([acme/web#318](https://github.com/acme/web/pull/318)). |\n\n## Why it is slow\n\n- The list query sorts by `updated_at` but filters by `workspace_id`, and neither column is indexed together.\n- Every page re-counts all reports for the total, so page 2 costs as much as page 1.\n- Large workspaces grew from 200 to 800 reports in the last quarter, so this got worse *without any code change*.\n\n## Asks\n\n1. **Index:** add `(workspace_id, updated_at)` and check the plan with `EXPLAIN ANALYZE`.\n2. **Count:** cache the total per workspace for 60 seconds instead of counting on every page.\n3. **Alert:** route the p95 alert to the API team's channel, so it is not missed again.\n",
    "updatedAt": "@-300",
    "createdAt": "@-4000",
    "priority": 3,
@@ -1184,6 +1184,91 @@
    },
    "comments": {
     "nodes": []
+   }
+  },
+  {
+   "id": "id-web-176",
+   "identifier": "WEB-176",
+   "title": "Custom widgets: pinned version not loaded after deploy",
+   "url": "https://linear.app/acme/issue/WEB-176",
+   "description": "A custom widget pinned to 1.4 still loads 1.2 after a deploy; two PRs: pin the version, and allow the widget's dependency.",
+   "updatedAt": "@-30",
+   "createdAt": "@-120",
+   "priority": 3,
+   "state": {
+    "id": "team-web-blocked",
+    "name": "Blocked",
+    "color": "#eb5757",
+    "position": 4,
+    "type": "started"
+   },
+   "team": {
+    "id": "team-web"
+   },
+   "assignee": {
+    "name": "Sam Lee"
+   },
+   "creator": {
+    "name": "Jo Doe"
+   },
+   "parent": null,
+   "project": null,
+   "attachments": {
+    "nodes": [
+     {
+      "url": "https://github.com/acme/web/pull/330",
+      "title": "acme/web#330",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "web",
+       "number": 330,
+       "status": "open",
+       "createdAt": "@-40",
+       "mergedAt": null,
+       "reviews": []
+      }
+     },
+     {
+      "url": "https://github.com/acme/web/pull/331",
+      "title": "acme/web#331",
+      "sourceType": "github",
+      "metadata": {
+       "repoLogin": "acme",
+       "repoName": "web",
+       "number": 331,
+       "status": "open",
+       "createdAt": "@-40",
+       "mergedAt": null,
+       "reviews": []
+      }
+     }
+    ]
+   },
+   "needs": {
+    "nodes": []
+   },
+   "labels": {
+    "nodes": [
+     {
+      "name": "Bug"
+     }
+    ]
+   },
+   "children": {
+    "nodes": []
+   },
+   "comments": {
+    "nodes": [
+     {
+      "id": "c176",
+      "body": "Thanks! I'll check once it's deployed.",
+      "createdAt": "@-35",
+      "user": {
+       "name": "Jo Doe"
+      }
+     }
+    ]
    }
   }
  ],

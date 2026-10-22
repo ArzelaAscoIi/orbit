@@ -74,6 +74,7 @@ impl App {
                 Self::session_overlay(card, reports);
             }
         }
+        story::set_mentions(self.cards.iter().chain(&self.pr_cards));
     }
 
     /// What the ticket's own Claude session did, laid over Linear's answer

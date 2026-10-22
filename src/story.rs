@@ -42,6 +42,41 @@ fn is_ours_in(profile: &crate::profile::Profile, org: &str, name: &str) -> bool 
     profile.is_ours(name) || (!org.is_empty() && name.trim().eq_ignore_ascii_case(org))
 }
 
+/// What a link to a ticket or a PR shows as a chip in markdown (ui
+/// widgets): its title and whether it is done. Keyed by ticket identifier
+/// and by PR URL (`https://github.com/o/r/pull/n`); set on each rebuild.
+static MENTIONS: std::sync::RwLock<std::collections::BTreeMap<String, (String, bool)>> =
+    std::sync::RwLock::new(std::collections::BTreeMap::new());
+
+/// The tickets and PRs the board knows, for `mention`.
+pub fn set_mentions<'a>(cards: impl Iterator<Item = &'a Card>) {
+    let mut known = std::collections::BTreeMap::new();
+    for card in cards {
+        let issue = &card.issue;
+        known.insert(
+            issue.identifier.clone(),
+            (issue.title.clone(), card.stage == Stage::Done),
+        );
+        for attachment in &issue.attachments.nodes {
+            if let Some(pr) = card.prs.iter().find(|p| p.url == attachment.url) {
+                known.insert(pr.url.clone(), (attachment.title.clone(), pr.merged));
+            }
+        }
+    }
+    *MENTIONS
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = known;
+}
+
+/// A ticket (by identifier) or PR (by URL) the board knows: title, done.
+pub fn mention(key: &str) -> Option<(String, bool)> {
+    MENTIONS
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .get(key)
+        .cloned()
+}
+
 pub fn set_bot(name: &str) {
     *BOT.write().unwrap() = name.to_owned();
 }

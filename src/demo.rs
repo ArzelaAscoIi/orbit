@@ -21,11 +21,13 @@ const CLONE_CHAT: &str = include_str!("../tests/demo/clone-chat.sh");
 /// The two sessions the demo shows: WEB-160 built in its own Claude
 /// session, and the clone's chat that drives the saved views initiative.
 /// (key, session id, title, identifier, script, working)
-const SESSIONS: [(&str, &str, &str, &str, &str, bool); 2] = [
+/// (key, session id, title, identifier, folder under work/, script, working)
+const SESSIONS: [(&str, &str, &str, &str, &str, &str, bool); 3] = [
     (
         "id-web-160",
         "d3m0b1d0-0000-4000-8000-000000000160",
         "Pin a dashboard to the sidebar",
+        "WEB-160",
         "WEB-160",
         "claude-build.sh",
         true,
@@ -35,7 +37,18 @@ const SESSIONS: [(&str, &str, &str, &str, &str, bool); 2] = [
         "d3m0c1a7-0000-4000-8000-000000000001",
         "Saved views on dashboards",
         "Chat",
+        "Chat",
         "clone-chat.sh",
+        false,
+    ),
+    // A free session that works in WEB-160's folder: it opens as WEB-160.
+    (
+        "free:1",
+        "d3m0f4ee-0000-4000-8000-000000000001",
+        "Unit tests for pinned dashboards",
+        "Session",
+        "WEB-160",
+        "claude-build.sh",
         false,
     ),
 ];
@@ -91,7 +104,9 @@ pub fn seed() {
     let _ = std::fs::create_dir_all(dir.join("status"));
     let _ = std::fs::create_dir_all(dir.join("demo"));
     let mut saved = serde_json::Map::new();
-    for (i, (key, id, title, identifier, script, working)) in SESSIONS.into_iter().enumerate() {
+    for (i, (key, id, title, identifier, folder, script, working)) in
+        SESSIONS.into_iter().enumerate()
+    {
         let text = if script == "claude-build.sh" {
             CLAUDE_BUILD
         } else {
@@ -105,7 +120,7 @@ pub fn seed() {
                 "identifier": identifier,
                 "title": title,
                 "session_id": id,
-                "cwd": format!("~/orbit/work/{identifier}"),
+                "cwd": format!("~/orbit/work/{folder}"),
                 "started_at": (now - jiff::SignedDuration::from_mins(20 + i as i64 * 50)).to_string(),
             }),
         );
@@ -148,12 +163,12 @@ pub fn seed() {
 pub fn rows() -> Vec<crate::claude::Live> {
     SESSIONS
         .iter()
-        .filter_map(|(_, id, title, identifier, _, working)| {
+        .filter_map(|(_, id, title, _, folder, _, working)| {
             serde_json::from_value(serde_json::json!({
                 "sessionId": id,
                 "id": &id[..8],
                 "name": title,
-                "cwd": format!("~/orbit/work/{identifier}"),
+                "cwd": format!("~/orbit/work/{folder}"),
                 "kind": "background",
                 "status": if *working { "busy" } else { "idle" },
                 "state": if *working { "working" } else { "idle" },
@@ -422,7 +437,7 @@ mod tests {
     #[test]
     fn the_demo_sessions_run_as_claude_agents_would_list_them() {
         let rows = rows();
-        assert_eq!(rows.len(), 2);
+        assert_eq!(rows.len(), 3);
         assert_eq!(rows[0].label(), "working");
         assert!(
             rows.iter()

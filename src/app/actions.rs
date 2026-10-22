@@ -3291,19 +3291,23 @@ impl App {
         clone_session(key, identifier, &self.missions)
     }
 
-    /// The ticket a session Orbit did not start works on: its folder is
-    /// that ticket's work folder (`…/work/ABC-207`, or a repo inside it).
+    /// The ticket a session not keyed by one works on (a free session, one
+    /// Orbit did not start): see `ticket_of`. A ticket's or PR's own session
+    /// keeps its own path.
     pub(super) fn ticket_of_session(&self, key: &str) -> Option<String> {
-        let sid = key.strip_prefix("sid:")?;
-        let cwd = &self.claude.rows.get(sid)?.cwd;
-        let identifier = crate::story::ticket_of_folder(cwd)?;
-        self.cards
-            .iter()
-            .find(|c| {
-                c.issue.identifier == identifier
-                    || c.issue.previous_identifiers.contains(&identifier)
-            })
-            .map(|c| c.issue.id.clone())
+        if self.card(key).is_some() || key.starts_with("pr:") {
+            return None;
+        }
+        let cwd = match key.strip_prefix("sid:") {
+            Some(sid) => self.claude.rows.get(sid).map(|r| r.cwd.clone()),
+            None => self
+                .claude
+                .saved
+                .get(key)
+                .map(|s| s.cwd.to_string_lossy().into_owned()),
+        };
+        let reports = self.claude.status.get(key).map_or(&[][..], Vec::as_slice);
+        ticket_of(cwd.as_deref(), reports, &self.cards)
     }
 
     /// The window and pane that show this ticket, the active one first.
@@ -3800,6 +3804,50 @@ fn builds_here(command: &str, build: &str) -> bool {
     command.split_whitespace().next() == Some(format!("/{build}").as_str())
 }
 
+/// The ticket a session works on, from what it left behind, first match
+/// wins: its folder is the ticket's work folder (`…/work/ABC-207`, or a repo
+/// inside it); its latest PR line is a PR on a card; its latest note names
+/// exactly one ticket on the board. Nothing certain: no ticket.
+fn ticket_of(
+    cwd: Option<&str>,
+    reports: &[claude::status::Report],
+    cards: &[crate::story::Card],
+) -> Option<String> {
+    let by_identifier = |identifier: &str| {
+        cards
+            .iter()
+            .find(|c| {
+                c.issue.identifier == identifier
+                    || c.issue.previous_identifiers.iter().any(|p| p == identifier)
+            })
+            .map(|c| c.issue.id.clone())
+    };
+    if let Some(id) = cwd
+        .and_then(crate::story::ticket_of_folder)
+        .and_then(|i| by_identifier(&i))
+    {
+        return Some(id);
+    }
+    if let Some(pr) = claude::status::pr(reports) {
+        let url = pr.text.trim();
+        if let Some(c) = cards.iter().find(|c| c.prs.iter().any(|p| p.url == url)) {
+            return Some(c.issue.id.clone());
+        }
+    }
+    let note = reports
+        .iter()
+        .rev()
+        .find(|r| r.state == claude::status::State::Note)?;
+    let mut named: Vec<String> = note
+        .text
+        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+        .filter_map(by_identifier)
+        .collect();
+    named.sort();
+    named.dedup();
+    (named.len() == 1).then(|| named.remove(0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3964,6 +4012,46 @@ mod tests {
         assert_eq!(walk.session, None);
         assert_eq!(walk.selected.as_deref(), Some("ABC-1"));
         assert_eq!(claude, view);
+    }
+
+    #[test]
+    fn a_session_opens_as_the_ticket_its_folder_pr_or_note_names() {
+        use crate::claude::status::{Report, State};
+        use crate::story::tests::issue;
+        let ticket = |id: &str, identifier: &str| {
+            let mut i = issue("In Review", "started", vec![]);
+            i.id = id.into();
+            i.identifier = identifier.into();
+            crate::story::card(i, &Default::default())
+        };
+        let mut a = ticket("a", "ABC-346");
+        let pr = crate::story::pr_card("https://github.com/o/r/pull/614", "t", "").unwrap();
+        a.prs = pr.prs.clone();
+        let cards = vec![a, ticket("b", "ABC-347")];
+        let line = |state, text: &str| Report {
+            at: std::time::UNIX_EPOCH,
+            state,
+            text: text.into(),
+        };
+        // Its folder is the ticket's work folder, or a repo inside it.
+        assert_eq!(
+            ticket_of(Some("/d/work/ABC-347/web"), &[], &cards).as_deref(),
+            Some("b")
+        );
+        // Its latest PR line is a PR on a card.
+        let pr_line = [line(State::Pr, "https://github.com/o/r/pull/614")];
+        assert_eq!(
+            ticket_of(Some("/d/work/free-1"), &pr_line, &cards).as_deref(),
+            Some("a")
+        );
+        // Its note names exactly one ticket on the board.
+        let note = [line(State::Note, "PR 614 green, ABC-346 in review")];
+        assert_eq!(ticket_of(None, &note, &cards).as_deref(), Some("a"));
+        // Two tickets, or none on the board: no guess.
+        let two = [line(State::Note, "ABC-346 waits for ABC-347")];
+        assert_eq!(ticket_of(None, &two, &cards), None);
+        let unknown = [line(State::Note, "XYZ-9 done")];
+        assert_eq!(ticket_of(Some("/d/work/free-2"), &unknown, &cards), None);
     }
 
     #[test]

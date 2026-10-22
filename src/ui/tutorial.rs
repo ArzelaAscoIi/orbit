@@ -482,7 +482,8 @@ pub const STEPS: &[Step] = &[
          the repos you deploy, CVE fixes), each as repo - title: Diff opens it, Diff all shows every \
          diff under its row, Approve approves it at the head shown. \
          Land approved then merges the green ones, sets Merge when ready where checks still \
-         run, and starts one session that makes the rest mergeable. Orbit keeps at it: each \
+         run, and starts one session that makes the rest mergeable; its count is exactly those, \
+         next to how many are on their way already and why any are held. Orbit keeps at it: each \
          one goes back into the merge queue by itself once it is green at the head you saw, \
          also after the queue drops it; one that got new commits asks you to land it again.",
     ),

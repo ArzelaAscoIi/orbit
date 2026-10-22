@@ -1704,19 +1704,24 @@ impl App {
             }
             Action::LandBatch(prs) => {
                 let mut rest = Vec::new();
+                let (mut merged, mut ready, mut on_way) = (0, 0, 0);
+                let mut skipped = Vec::new();
+                let mut live = None;
                 for (url, head) in prs {
-                    let Some(Ok(gate)) = self.gates.get(&url) else {
-                        continue;
-                    };
+                    let step = self.land_plan(&url, &head);
                     // Followed until it lands: queued again at this head.
-                    if land_step(gate, &head) != Land::Skip {
+                    if !matches!(step, Land::Skip(_)) {
                         self.landing.insert(url.clone(), head.clone());
                     }
-                    match land_step(gate, &head) {
-                        Land::Merge => self.apply(Action::Merge { url, head }, ctx),
+                    match step {
+                        Land::Merge => {
+                            merged += 1;
+                            self.apply(Action::Merge { url, head }, ctx);
+                        }
                         // Auto-merge on, and a session watching: a check
                         // that fails after this still gets re-run or fixed.
                         Land::WhenReady => {
+                            ready += 1;
                             self.apply(
                                 Action::AutoMerge {
                                     url: url.clone(),
@@ -1727,8 +1732,25 @@ impl App {
                             rest.push(url);
                         }
                         Land::Goal => rest.push(url),
-                        Land::Skip => {}
+                        Land::Merging => {
+                            on_way += 1;
+                            live = live.or_else(|| self.lander(&url).cloned());
+                        }
+                        Land::Skip(why) => skipped.push(why),
                     }
+                }
+                self.toasts.push(super::Toast {
+                    key: format!("land:{}", crate::activity::now_ms()),
+                    line: land_summary(merged, ready, rest.len(), on_way, &skipped),
+                    at: std::time::Instant::now(),
+                    agent: false,
+                });
+                // Nothing new: the landing session already on it, not a second.
+                if rest.is_empty() {
+                    if let Some(key) = live {
+                        self.apply(Action::OpenSession(key), ctx);
+                    }
+                    return;
                 }
                 // The rest: a landing session per goal (one, unless the
                 // list outgrows /goal's limit), merging each once CLEAN. Several sit
@@ -1742,6 +1764,9 @@ impl App {
                         [one] => format!("Land {}", pr_ref(one)),
                         _ => format!("Land {n} {} PRs", crate::profile::get().ktlo.label),
                     };
+                    for url in rest.iter().filter(|u| goal.contains(u.as_str())) {
+                        self.landers.insert(url.clone(), key.clone());
+                    }
                     let mut spec = claude::free(&key, &name, None, self.skill_files());
                     // Named so Sessions, Cmd+K and KTLO's batch find it again.
                     spec.identifier = claude::LANDING.into();
@@ -3283,6 +3308,22 @@ impl App {
         }
     }
 
+    /// What Land approved does with this PR at the head shown: the button
+    /// counts these, the click does them.
+    pub fn land_plan(&self, url: &str, head: &str) -> Land {
+        match self.gates.get(url) {
+            Some(Ok(gate)) => handed(land_step(gate, head), self.lander(url).is_some()),
+            _ => Land::Skip("not checked yet".into()),
+        }
+    }
+
+    /// The running landing session that has this PR, if any.
+    fn lander(&self, url: &str) -> Option<&String> {
+        self.landers
+            .get(url)
+            .filter(|key| self.claude.row_of(key).is_some_and(|r| r.running()))
+    }
+
     /// A session of the clone's: a chat, the hourly pass, or a mission
     /// (also one an initiative names that resumed before missions kept
     /// their identifier).
@@ -3597,17 +3638,27 @@ impl App {
 
 const WINDOWS: &str = "windows.json";
 
-/// What Land approved does with one approved PR.
+/// What Land approved does with one approved PR: the button counts the
+/// ones it acts on (`acts`), the click does exactly those.
 #[derive(Debug, PartialEq)]
-enum Land {
+pub enum Land {
     /// Green at the head shown: merged now (checked again first).
     Merge,
     /// Only checks missing at the head shown: Merge when ready.
     WhenReady,
     /// Held back by CI or its branch: a goal in the landing session.
     Goal,
-    /// New commits since it was shown, or nothing to do.
-    Skip,
+    /// On its way already: in the merge queue, auto-merge on with nothing
+    /// red, or a running landing session has it.
+    Merging,
+    /// Nothing to do here, and why.
+    Skip(String),
+}
+
+impl Land {
+    pub fn acts(&self) -> bool {
+        matches!(self, Self::Merge | Self::WhenReady | Self::Goal)
+    }
 }
 
 /// A PR the user's Land click covers, as its gate changed: queue it again
@@ -3634,13 +3685,60 @@ pub(super) enum Landing {
 }
 
 fn land_step(gate: &crate::github::Gate, head: &str) -> Land {
+    let red = matches!(gate.checks.as_str(), "FAILURE" | "ERROR")
+        || matches!(gate.branch.as_str(), "BEHIND" | "DIRTY");
     match () {
-        _ if gate.head != head => Land::Skip,
+        _ if gate.state != "OPEN" => Land::Merging,
+        _ if gate.head != head => Land::Skip("new commits since shown".into()),
+        _ if gate.queued || (gate.auto_merge && !red) => Land::Merging,
         _ if gate.green => Land::Merge,
         _ if gate.can_auto_merge => Land::WhenReady,
         _ if crate::github::landable(gate) => Land::Goal,
-        _ => Land::Skip,
+        _ => Land::Skip(gate.why.clone()),
     }
+}
+
+/// A PR a running landing session already has is on its way: a second
+/// click does not hand it to another.
+fn handed(step: Land, in_session: bool) -> Land {
+    match step {
+        Land::WhenReady | Land::Goal if in_session => Land::Merging,
+        step => step,
+    }
+}
+
+/// Land approved's one line on what the click did.
+fn land_summary(
+    merged: usize,
+    ready: usize,
+    session: usize,
+    on_way: usize,
+    skipped: &[String],
+) -> String {
+    let mut parts = Vec::new();
+    if merged > 0 {
+        parts.push(format!("merging {merged}"));
+    }
+    if ready > 0 {
+        parts.push(format!("Merge when ready on {ready}"));
+    }
+    if session > 0 {
+        parts.push(format!("a session lands {session}"));
+    }
+    if on_way > 0 {
+        parts.push(format!("{on_way} already on their way"));
+    }
+    if !skipped.is_empty() {
+        parts.push(format!(
+            "{} skipped ({})",
+            skipped.len(),
+            skipped.join(", ")
+        ));
+    }
+    if parts.is_empty() {
+        return "Land approved: nothing to land".into();
+    }
+    format!("Land approved: {}", parts.join(", "))
 }
 
 /// `repo#7` for a PR link, the link itself when it is not one.
@@ -4108,6 +4206,7 @@ mod tests {
             can_auto_merge: auto,
             checks: checks.into(),
             branch: "BLOCKED".into(),
+            why: "blocked by a base branch rule".into(),
             ..Default::default()
         };
         assert_eq!(land_step(&gate(true, false, "SUCCESS"), "abc"), Land::Merge);
@@ -4116,10 +4215,42 @@ mod tests {
             Land::WhenReady
         );
         assert_eq!(land_step(&gate(false, false, "FAILURE"), "abc"), Land::Goal);
-        assert_eq!(
-            land_step(&gate(true, false, "SUCCESS"), "new"),
-            Land::Skip,
+        assert!(
+            !land_step(&gate(true, false, "SUCCESS"), "new").acts(),
             "new commits"
+        );
+        let queued = Gate {
+            queued: true,
+            ..gate(false, false, "SUCCESS")
+        };
+        assert_eq!(land_step(&queued, "abc"), Land::Merging);
+        let auto = Gate {
+            auto_merge: true,
+            ..gate(false, false, "PENDING")
+        };
+        assert_eq!(land_step(&auto, "abc"), Land::Merging, "GitHub merges it");
+        let auto_red = Gate {
+            auto_merge: true,
+            ..gate(false, false, "FAILURE")
+        };
+        assert_eq!(
+            land_step(&auto_red, "abc"),
+            Land::Goal,
+            "a session fixes it"
+        );
+        assert_eq!(
+            land_step(&gate(false, false, "SUCCESS"), "abc"),
+            Land::Skip("blocked by a base branch rule".into()),
+            "counted by nobody, said why"
+        );
+        // A second click leaves a session's PRs with it.
+        assert_eq!(handed(Land::Goal, true), Land::Merging);
+        assert_eq!(handed(Land::Goal, false), Land::Goal);
+        assert_eq!(handed(Land::Merge, true), Land::Merge);
+        assert_eq!(
+            land_summary(3, 1, 2, 1, &["new commits since shown".into()]),
+            "Land approved: merging 3, Merge when ready on 1, a session lands 2, \
+             1 already on their way, 1 skipped (new commits since shown)"
         );
     }
 

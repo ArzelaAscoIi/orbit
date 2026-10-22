@@ -13,6 +13,7 @@
 //! - `review`: hooks for screenshots and scripted views, off by default.
 
 mod actions;
+pub use actions::Land;
 pub(crate) use actions::quiet_ms;
 mod ai;
 mod board;
@@ -951,6 +952,9 @@ pub struct App {
     /// at that head, after a re-run or a drop from the merge queue.
     // ponytail: in memory; a restart forgets the batch, a file if that bites.
     pub landing: HashMap<String, String>,
+    /// Which landing session each PR went to, so a second Land click
+    /// does not start another for it.
+    landers: HashMap<String, String>,
     landing_at: Option<std::time::Instant>,
     /// The parents the clone drives (mission.rs), as last read, and when.
     pub missions: Vec<crate::mission::Initiative>,
@@ -1278,6 +1282,7 @@ impl App {
             chat: None,
             palette_picks: palette::load_picks(),
             landing: HashMap::new(),
+            landers: HashMap::new(),
             landing_at: None,
             reviewers_asked: HashSet::new(),
             looked_up: HashMap::new(),

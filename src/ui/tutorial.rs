@@ -914,7 +914,7 @@ pub const STEPS: &[Step] = &[
          shows which tools are connected and what each one turns on. A feature whose tool is \
          not connected stays hidden or says what it needs. Paste a key to connect one; once it \
          is saved, \"change key\" under it replaces a rotated or wrong key without editing \
-         settings.json.",
+         settings.json, and \"Use Claude Code's login instead\" drops a saved Anthropic key.",
     ),
     step(
         Some("local-agent"),

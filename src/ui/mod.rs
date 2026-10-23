@@ -266,7 +266,7 @@ fn clone_chat(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     let panel = egui::Panel::right("clone-chat")
         .default_size(520.0)
         // Never dragged down to a sliver that reads as closed.
-        .size_range(320.0..=1400.0)
+        .size_range(320.0..=(ui.ctx().content_rect().width() * 0.6).max(320.0))
         .resizable(true)
         .frame(
             Frame::new()
@@ -616,8 +616,14 @@ fn finished_missions(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 if !it.parent.is_empty() {
                     ui.label(label(&it.parent).color(p().text_3));
                 }
-                if link(ui, label(&it.goal).color(p().text_2))
-                    .on_hover_text("Open the session that drove it")
+                // Truncated: a long goal never widens the panel.
+                let goal = egui::Label::new(label(&it.goal).color(p().text_2))
+                    .truncate()
+                    .sense(egui::Sense::click());
+                if ui
+                    .add(goal)
+                    .on_hover_cursor(egui::CursorIcon::PointingHand)
+                    .on_hover_text(&it.goal)
                     .clicked()
                 {
                     actions.push(Action::Steer(it.id.clone()));
@@ -644,9 +650,15 @@ fn finished_missions(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
             ui.data_mut(|d| d.insert_temp(id, !open));
         }
         if open {
-            for it in earlier {
-                row(ui, it, actions);
-            }
+            // Scrolls in place: dozens of them never push the chat away.
+            egui::ScrollArea::vertical()
+                .id_salt("missions-earlier-list")
+                .max_height(220.0)
+                .show(ui, |ui| {
+                    for it in earlier {
+                        row(ui, it, actions);
+                    }
+                });
         }
     }
 }

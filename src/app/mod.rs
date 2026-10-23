@@ -64,6 +64,8 @@ pub enum Action {
     /// Saves the key typed into its connection row in Settings and starts
     /// using it.
     SaveKey(crate::secrets::Secret),
+    /// Removes the saved Anthropic key: Claude Code's login answers again.
+    UseClaudeCode,
     /// Opens the team picker.
     PickTeams,
     /// Adds or removes a team from the picker's selection.

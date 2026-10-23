@@ -101,6 +101,12 @@ impl App {
                 let settings = store::load_settings();
                 self.show_settings(settings);
             }
+            Action::UseClaudeCode => {
+                self.forget_anthropic_key(None);
+                // settings.json no longer shows a saved key.
+                let settings = store::load_settings();
+                self.show_settings(settings);
+            }
             Action::PickTeams => self.picking = Some(self.teams.clone()),
             Action::ToggleTeam(key) => {
                 if let Some(picked) = &mut self.picking {

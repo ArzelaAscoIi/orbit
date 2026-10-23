@@ -24,7 +24,14 @@ cargo build --release --target aarch64-apple-darwin
 
 rm -rf "$APP" "dist/$BIN-$VERSION-macos.zip"
 mkdir -p dist
-scripts/app.sh "target/aarch64-apple-darwin/release/$BIN" "$APP"
+# The licenses of everything the app includes, as they require: the
+# crates' (about.toml) and the Geist fonts'.
+command -v cargo-about >/dev/null \
+  || { echo "cargo-about is missing: cargo install --locked cargo-about --features cli" >&2; exit 1; }
+cargo about generate about.hbs -o target/THIRD_PARTY_LICENSES.html
+cp assets/fonts/OFL.txt target/Geist-OFL.txt
+scripts/app.sh "target/aarch64-apple-darwin/release/$BIN" "$APP" \
+  target/THIRD_PARTY_LICENSES.html target/Geist-OFL.txt
 
 ditto -c -k --keepParent "$APP" "dist/$BIN-$VERSION-macos.zip"
 echo "Built dist/$BIN-$VERSION-macos.zip"

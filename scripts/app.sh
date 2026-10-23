@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Wraps a built binary into an ad-hoc signed app bundle:
 #
-#   scripts/app.sh <binary> <Name.app>
+#   scripts/app.sh <binary> <Name.app> [<file> ...]
 #
 # `make bundle` uses it for the shared zip, `make run` for target/Orbit.app,
 # so the app has a bundle id: Mac notifications are Orbit's own then and a
@@ -18,6 +18,12 @@ VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
 
 mkdir -p "$APP/Contents/MacOS"
 cp "$SRC" "$APP/Contents/MacOS/$BIN"
+# Further files go to Contents/Resources (the license notices), before
+# the signature seals them.
+if [ $# -gt 2 ]; then
+  mkdir -p "$APP/Contents/Resources"
+  cp "${@:3}" "$APP/Contents/Resources/"
+fi
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

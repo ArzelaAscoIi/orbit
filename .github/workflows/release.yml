@@ -37,6 +37,10 @@ jobs:
       - name: Check
         run: make check
 
+      - name: cargo-about
+        # Writes the license notices that ship in the app (bundle-macos.sh).
+        run: cargo install --locked cargo-about@0.9.2 --features cli
+
       - name: Build the app
         env:
           # The app updates from the repo that published it.

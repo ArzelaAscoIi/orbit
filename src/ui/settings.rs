@@ -332,7 +332,7 @@ fn connections(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 .or_else(|| Some("through Claude Code's login".to_owned())),
             "briefs, short names, walkthroughs, questions about PRs, test plans, New ticket",
             "none needed with Claude Code signed in; else paste a key",
-            Some((Secret::Anthropic, "sk-ant-…")),
+            Some((Secret::Anthropic, "sk-ant-… or claude-code")),
         ),
         (
             "GitHub",
@@ -381,6 +381,14 @@ fn connections(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                             egui::CollapsingHeader::new(label("change key"))
                                 .id_salt(name)
                                 .show(ui, |ui| key_field(app, ui, secret, hint, actions));
+                            // A saved key is never a dead end: back to the
+                            // Claude Code login in one click.
+                            if secret == Secret::Anthropic
+                                && hover_hand(&ui.button("Use Claude Code's login instead"))
+                                    .clicked()
+                            {
+                                actions.push(Action::UseClaudeCode);
+                            }
                         }
                     } else if connected.is_none() {
                         ui.label(label(&format!("connect: {how}")));

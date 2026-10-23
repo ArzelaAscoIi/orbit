@@ -14,6 +14,15 @@ use crate::story::{Card, Stage};
 const URL: &str = "https://api.anthropic.com/v1/messages";
 /// The key that means "no Anthropic key: ask the local Claude Code".
 pub const CLAUDE_CODE: &str = "claude-code";
+
+/// Whether the user typed `claude-code` for the key: drop the saved key
+/// and use Claude Code's login again.
+pub fn means_claude_code(typed: &str) -> bool {
+    typed
+        .trim()
+        .trim_matches('"')
+        .eq_ignore_ascii_case(CLAUDE_CODE)
+}
 const MODEL: &str = "claude-haiku-4-5";
 /// For the diff walkthrough, which the user asks for: reading code for a
 /// reviewer needs more judgment than naming titles.
@@ -653,6 +662,15 @@ mod tests {
     fn the_walkthrough_flags_a_display_patch_over_a_value_computed_elsewhere() {
         assert!(GUIDE.contains("hides the symptom"));
         assert!(GUIDE.contains("where the value"));
+    }
+
+    #[test]
+    fn typing_claude_code_for_the_key_means_its_login() {
+        for typed in ["claude-code", " Claude-Code\n", "\"claude-code\""] {
+            assert!(means_claude_code(typed), "{typed}");
+        }
+        assert!(!means_claude_code("sk-ant-test-abcDEF123_xyz-000"));
+        assert!(!means_claude_code(""));
     }
 
     #[test]

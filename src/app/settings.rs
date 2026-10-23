@@ -110,9 +110,12 @@ impl App {
         self.show_settings(store::load_settings());
     }
 
-    /// A key from the file: stored and used, or with "" removed.
+    /// A key from the file: stored and used, or with "" removed. For
+    /// Anthropic, `claude-code` removes it too: Claude Code's login answers.
     pub(super) fn set_key(&mut self, secret: Secret, key: String) -> Result<(), String> {
-        if key.is_empty() {
+        if key.is_empty()
+            || (secret == Secret::Anthropic && crate::anthropic::means_claude_code(&key))
+        {
             if !self.has_key(secret) {
                 return Ok(());
             }
@@ -136,8 +139,10 @@ impl App {
         }
         match secret {
             Secret::Anthropic => {
-                let key = secrets::anthropic_key_in(&key)
-                    .ok_or("anthropicApiKey doesn't look like an Anthropic key (sk-ant-...)")?;
+                let key = secrets::anthropic_key_in(&key).ok_or(
+                    "anthropicApiKey doesn't look like an Anthropic key (sk-ant-...); \
+                     claude-code uses Claude Code's login",
+                )?;
                 self.enable_anthropic(key);
             }
             _ => {

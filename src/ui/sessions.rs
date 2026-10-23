@@ -476,7 +476,7 @@ fn codex_pane(app: &App, key: &str, ui: &mut Ui, actions: &mut Vec<Action>) {
                     continue;
                 };
                 ui.add(egui::Label::new(label(question["question"].as_str().unwrap_or(id))).wrap());
-                let field = egui::Id::new(("codex-answer", key, id));
+                let field = egui::Id::unique(("codex-answer", key, id));
                 let mut answer = ui.data(|d| d.get_temp::<String>(field)).unwrap_or_default();
                 ui.add(egui::TextEdit::singleline(&mut answer).desired_width(ui.available_width()));
                 ui.data_mut(|d| d.insert_temp(field, answer.clone()));
@@ -532,7 +532,7 @@ fn codex_pane(app: &App, key: &str, ui: &mut Ui, actions: &mut Vec<Action>) {
         }
         _ => "Ask Codex…".to_owned(),
     };
-    let id = egui::Id::new(("codex-prompt", key));
+    let id = egui::Id::unique(("codex-prompt", key));
     let (mut draft, typed) = ui
         .data(|d| d.get_temp::<(String, String)>(id))
         .unwrap_or_default();
@@ -969,7 +969,7 @@ pub(super) fn list(app: &App, cursor: Option<&bar::Entry>, ui: &mut Ui, actions:
         // The operator's row, and the board run's under a profile with one:
         // as tall as they drew last frame, so a bigger font or a wrapped
         // row never pushes the board run under the bottom bar.
-        let footer_id = egui::Id::new("sessions-footer");
+        let footer_id = egui::Id::unique("sessions-footer");
         let footer = ui.data(|d| d.get_temp::<f32>(footer_id)).unwrap_or(
             if crate::profile::get().orchestrator.is_some() {
                 100.0

@@ -271,7 +271,14 @@ pub fn follow(ctx: &egui::Context, choice: Choice) {
 pub fn fonts(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
     // Phosphor icons (one family) behind the text fonts, for buttons.
-    egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+    // ponytail: egui-phosphor 0.14 is built on egui 0.36, so only its font
+    // bytes are used here; back to `add_to_fonts` once it moves to 0.37.
+    fonts.font_data.insert(
+        "phosphor".into(),
+        FontData::from_static(egui_phosphor::Variant::Regular.font_bytes()).into(),
+    );
+    let text = fonts.families.entry(FontFamily::Proportional).or_default();
+    text.insert(text.len().min(1), "phosphor".into());
     for (name, bytes) in [
         (
             "geist",

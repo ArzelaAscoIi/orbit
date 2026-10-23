@@ -119,7 +119,7 @@ pub(super) fn show(app: &mut App, card: &Card, pr: &Pr, ui: &mut Ui, actions: &m
         Some(Ok(talk)) => &talk.threads,
         _ => &[],
     };
-    let compose = egui::Id::new(("compose", &pr.url));
+    let compose = egui::Id::unique(("compose", &pr.url));
     let folders: Vec<String> = app
         .folded
         .iter()
@@ -1090,7 +1090,7 @@ fn ask(app: &App, url: &str, ui: &mut Ui, actions: &mut Vec<Action>) -> egui::Re
             let rect = approval_note(app, url, ui, actions);
             super::tutorial::mark(app, ui, "approval-note", rect);
         }
-        let id = egui::Id::new(("ask-pr", url));
+        let id = egui::Id::unique(("ask-pr", url));
         let mut text = ui.data(|d| d.get_temp::<String>(id)).unwrap_or_default();
         let field = ui.add(
             egui::TextEdit::singleline(&mut text)
@@ -1336,7 +1336,7 @@ fn wrap_up(app: &App, card: &Card, url: &str, ui: &mut Ui, actions: &mut Vec<Act
 /// Which review the composer under the header writes, per PR: Some(true)
 /// requests changes, Some(false) comments. egui memory, not App.
 fn composing(ui: &Ui, url: &str) -> Option<bool> {
-    ui.data(|d| d.get_temp::<bool>(egui::Id::new(("review-composer", url))))
+    ui.data(|d| d.get_temp::<bool>(egui::Id::unique(("review-composer", url))))
 }
 
 /// Review ▾ beside Approve: Comment, or Request changes (not on the user's
@@ -1373,7 +1373,10 @@ fn review_menu(app: &App, pr: &story::Pr, ui: &mut Ui) {
     mark(app, ui, "review-menu", rect);
     if let Some(changes) = pick {
         ui.data_mut(|d| {
-            d.insert_temp(egui::Id::new(("review-composer", pr.url.as_str())), changes)
+            d.insert_temp(
+                egui::Id::unique(("review-composer", pr.url.as_str())),
+                changes,
+            )
         });
     }
 }
@@ -1390,8 +1393,8 @@ fn review_composer(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Act
     let Some(changes) = composing(ui, &pr.url) else {
         return;
     };
-    let key = egui::Id::new(("review-composer", pr.url.as_str()));
-    let text_id = egui::Id::new(("review-text", pr.url.as_str()));
+    let key = egui::Id::unique(("review-composer", pr.url.as_str()));
+    let text_id = egui::Id::unique(("review-text", pr.url.as_str()));
     let mut text = ui
         .data(|d| d.get_temp::<String>(text_id))
         .unwrap_or_default();
@@ -1524,9 +1527,9 @@ fn first_focus(ui: &Ui, step: Option<&Step>, file: &File, n: usize) -> bool {
         return false;
     };
     let here = at(first, file, n) && (n == first.from || first.to == usize::MAX && n == 1);
-    let id = egui::Id::new("guide-scrolled");
+    let id = egui::Id::unique("guide-scrolled");
     let key = (step.map(|s| s.title.clone()), file.path.clone(), n);
-    let key = egui::Id::new(key);
+    let key = egui::Id::unique(key);
     if !here || ui.ctx().data(|d| d.get_temp::<egui::Id>(id)) == Some(key) {
         return false;
     }

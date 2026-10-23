@@ -13,8 +13,8 @@ anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Same UI stack as Spotifast: egui on glow, no browser engine.
-eframe = { version = "0.36", default-features = false, features = ["accesskit", "glow", "default_fonts", "links", "wayland", "x11"] }
-egui = "0.36"
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "glow", "default_fonts", "links", "wayland", "x11"] }
+egui = { version = "0.37", features = ["monochrome_emoji_fonts"] }  # ⌘ ⚙: egui 0.37 ships its emoji fonts only behind this
 # Icons on the PR action buttons (Phosphor, one family, as a font).
 egui-phosphor = "0.14"
 # Network work runs on a tokio runtime off the UI thread (src/backend.rs).
@@ -32,7 +32,7 @@ tokenizers = { version = "0.23", default-features = false, features = ["onig"] }
 # The embedded Claude Code terminal (src/claude/): a real pseudo-terminal
 # for the `claude` process and a VT100 screen model to draw it from.
 portable-pty = "0.9"
-vt100 = "0.16"
+vt100 = "0.18"
 # Images in ticket descriptions (Linear uploads), decoded for egui; eframe
 # already builds it (arboard), this adds the formats tickets carry.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }

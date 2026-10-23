@@ -25,7 +25,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui) {
     };
     let ctx = ui.ctx().clone();
     let (mut enter, mut back, mut escape) = (false, false, false);
-    let bar = egui::Area::new(egui::Id::new("find"))
+    let bar = egui::Area::new(egui::Id::unique("find"))
         .order(egui::Order::Foreground)
         .anchor(egui::Align2::RIGHT_TOP, egui::vec2(-16.0, 48.0))
         .show(&ctx, |ui| {
@@ -93,7 +93,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui) {
     find.matches = marks.len();
     let painter = ctx.layer_painter(egui::LayerId::new(
         egui::Order::Foreground,
-        egui::Id::new("find-marks"),
+        egui::Id::unique("find-marks"),
     ));
     for (i, (rect, clip)) in marks.iter().enumerate() {
         let color = if i == find.current {

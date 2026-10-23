@@ -35,7 +35,7 @@ pub(super) fn sheet_search(
     let rect = pad(ui, |ui| {
         ui.add(
             egui::TextEdit::singleline(&mut query)
-                .id(egui::Id::new(SEARCH))
+                .id(egui::Id::unique(SEARCH))
                 .hint_text(hint)
                 .desired_width(f32::INFINITY),
         );
@@ -495,7 +495,7 @@ fn md_label(ui: &mut Ui, text: &str, size: f32, color: Color32, strong: bool) ->
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
         if response.clicked() {
             ui.ctx()
-                .data_mut(|d| d.insert_temp(egui::Id::new(MARKDOWN_LINK), url));
+                .data_mut(|d| d.insert_temp(egui::Id::unique(MARKDOWN_LINK), url));
         }
     }
     response
@@ -878,8 +878,7 @@ pub(super) fn chip(ui: &mut Ui, text: &str) -> egui::Response {
     let size = (galley.size() + 2.0 * margin).min(egui::vec2(width, f32::INFINITY));
     let (rect, response) = ui.allocate_exact_size(size, Sense::hover());
     let said = galley.text().to_owned();
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), &said));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), &said));
     let elided = galley.elided;
     if ui.is_rect_visible(rect) {
         // Clipped to the chip: in a row narrower than its margins the
@@ -925,7 +924,7 @@ pub(super) fn opened_by(ui: &mut Ui, who: crate::story::Who, name: &str) -> egui
 /// or the user's own: a chip in the accent colour, `why` on hover.
 /// Copy link: puts `url` on the clipboard and says so for two seconds.
 pub(super) fn copy_link(ui: &mut Ui, url: &str) -> egui::Response {
-    let id = egui::Id::new(("copied", url));
+    let id = egui::Id::unique(("copied", url));
     let now = ui.input(|i| i.time);
     let copied = ui
         .data(|d| d.get_temp::<f64>(id))
@@ -1105,7 +1104,7 @@ pub(super) fn session_lead(
 /// Copy as an icon: the URL to the clipboard, a check for two seconds.
 pub(super) fn copy_icon(ui: &mut Ui, url: &str) -> egui::Response {
     use egui_phosphor::regular::{CHECK, COPY};
-    let id = egui::Id::new(("copied", url));
+    let id = egui::Id::unique(("copied", url));
     let now = ui.input(|i| i.time);
     let copied = ui
         .data(|d| d.get_temp::<f64>(id))
@@ -1140,7 +1139,7 @@ pub(super) fn agent_primary(
 /// A row of buttons centred in the space: laid out after last frame's
 /// width, since egui places a row before it knows how wide it is.
 pub(super) fn centered_row(ui: &mut Ui, salt: &str, add: impl FnOnce(&mut Ui)) {
-    let id = ui.id().with(("centered-row", salt));
+    let id = ui.scope_id().with(("centered-row", salt));
     let width: f32 = ui.data(|d| d.get_temp(id)).unwrap_or(0.0);
     ui.horizontal(|ui| {
         ui.add_space(((ui.available_width() - width) / 2.0).max(0.0));
@@ -1320,7 +1319,7 @@ type Mask = [u8; MASK * MASK];
 /// A 64 px alpha mask as a 13 px image in the theme's text colour, its
 /// texture made once per name.
 fn mask(ui: &Ui, name: &'static str, alpha: &Mask) -> egui::Image<'static> {
-    let id = egui::Id::new(name);
+    let id = egui::Id::unique(name);
     let texture = ui.ctx().data(|d| d.get_temp::<egui::TextureHandle>(id));
     let texture = texture.unwrap_or_else(|| {
         // Premultiplied white; the tint gives it the theme's colour.
@@ -1354,7 +1353,7 @@ pub(super) fn status_color(status: &str) -> Color32 {
 pub(super) fn clear_of_clone(ui: &mut Ui) {
     let Some(switch) = ui
         .ctx()
-        .memory(|m| m.area_rect(egui::Id::new(CLONE_SWITCH)))
+        .memory(|m| m.area_rect(egui::Id::unique(CLONE_SWITCH)))
     else {
         return;
     };

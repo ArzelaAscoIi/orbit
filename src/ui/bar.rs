@@ -181,7 +181,7 @@ pub(super) fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
     });
     // Only the sheet's search field keeps its keys; a terminal under the
     // sheet gives them up.
-    let field = egui::Id::new(SEARCH);
+    let field = egui::Id::unique(SEARCH);
     match ui.ctx().memory(|m| m.focused()) {
         Some(id) if id == field => return,
         Some(_) => ui.ctx().memory_mut(|m| m.stop_text_input()),
@@ -194,7 +194,7 @@ pub(super) fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
             .ctx()
             .input_mut(|i| i.consume_key(Modifiers::NONE, Key::Slash))
     {
-        ui.ctx().memory_mut(|m| m.request_focus(Id::new(SEARCH)));
+        ui.ctx().memory_mut(|m| m.request_focus(Id::unique(SEARCH)));
         return;
     }
     ui.ctx().input_mut(|i| {
@@ -260,7 +260,7 @@ pub(super) fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
 
 /// Scrolls the cursor's row into view once, when the cursor moves to it.
 pub(super) fn follow(ui: &Ui, row: &egui::Response, what: &str) {
-    let seen = Id::new("sheet-cursor-seen");
+    let seen = Id::unique("sheet-cursor-seen");
     if ui.data(|d| d.get_temp::<String>(seen)).as_deref() != Some(what) {
         ui.data_mut(|d| d.insert_temp(seen, what.to_owned()));
         row.scroll_to_me(None);
@@ -302,7 +302,7 @@ pub(super) fn hints(view: &View) -> &'static str {
 /// priority order) instead of the user's order. Collapsed (« / »), only
 /// the numbers and their states remain.
 pub(super) fn sidebar(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
-    let collapsed_id = Id::new("sidebar-collapsed");
+    let collapsed_id = Id::unique("sidebar-collapsed");
     let collapsed: bool = ui.data(|d| d.get_temp(collapsed_id)).unwrap_or(false);
     let panel = if collapsed {
         egui::Panel::left("sidebar-narrow").exact_size(SIDEBAR_NARROW)
@@ -331,7 +331,7 @@ pub(super) fn sidebar(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
     // The sheet rises over the panes only, beside the sidebar.
     let rect = panel.response.rect;
     ui.ctx()
-        .data_mut(|d| d.insert_temp(Id::new(SIDEBAR_RECT), rect));
+        .data_mut(|d| d.insert_temp(Id::unique(SIDEBAR_RECT), rect));
     mark(app, ui, "strip", rect);
 }
 
@@ -390,7 +390,7 @@ fn window_repo(app: &App, i: usize) -> String {
 /// The sidebar's sort: what the user picked, else herdr's
 /// `ui.agent_panel_sort` while herdr's config is in use.
 fn sort_of(app: &App, ui: &Ui) -> u8 {
-    ui.data(|d| d.get_temp(Id::new("sidebar-sort")))
+    ui.data(|d| d.get_temp(Id::unique("sidebar-sort")))
         .unwrap_or_else(|| {
             let herdr = app
                 .herdr_config
@@ -405,7 +405,7 @@ fn sort_of(app: &App, ui: &Ui) -> u8 {
 }
 
 fn wide(app: &App, ui: &mut Ui, collapsed_id: Id, actions: &mut Vec<Action>) {
-    let sort_id = Id::new("sidebar-sort");
+    let sort_id = Id::unique("sidebar-sort");
     let sort = sort_of(app, ui);
     ui.add_space(8.0);
     ui.horizontal(|ui| {
@@ -489,7 +489,7 @@ fn wide(app: &App, ui: &mut Ui, collapsed_id: Id, actions: &mut Vec<Action>) {
         ui.horizontal(|ui| {
             ui.add_space(14.0);
             // herdr's prefix waiting for its key: its mode, as herdr shows it.
-            if ui.data(|d| d.get_temp::<f64>(Id::new(PREFIX))).is_some() {
+            if ui.data(|d| d.get_temp::<f64>(Id::unique(PREFIX))).is_some() {
                 ui.label(label("PREFIX · c new · v split · z zoom · n/p · esc").color(p().signal));
             } else {
                 ui.label(label("⌘1–9 · ⌘⇧[ ] · drag to reorder"));
@@ -578,7 +578,7 @@ pub(super) fn herdr_keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
         return;
     };
     let keys = &config.keys;
-    let id = Id::new(PREFIX);
+    let id = Id::unique(PREFIX);
     let now = ui.input(|i| i.time);
     let pending = ui
         .data(|d| d.get_temp::<f64>(id))
@@ -653,7 +653,7 @@ pub(super) fn herdr_keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
     };
     let windows = app.windows.len();
     let step = |by: i64| ((app.window as i64 + by).rem_euclid(windows.max(1) as i64)) as usize;
-    let sidebar = Id::new("sidebar-collapsed");
+    let sidebar = Id::unique("sidebar-collapsed");
     match name.as_str() {
         "help" => actions.push(Action::PaletteQuery("shortcut ".into())),
         "settings" => actions.push(Action::Show(View::Settings)),
@@ -781,11 +781,11 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
     let order = sidebar_order(&states, &repos, sort);
     let mut group: Option<&str> = None;
     // The current window came into view once, when it became so.
-    let seen = Id::new("strip-window-seen");
+    let seen = Id::unique("strip-window-seen");
     let changed = ui.data(|d| d.get_temp::<usize>(seen)) != Some(app.window);
     // A row dragged along the list: which one, and every row's place, for
     // where it would land. Only in the user's own order.
-    let dragging_id = Id::new("strip-dragging");
+    let dragging_id = Id::unique("strip-dragging");
     let dragging: Option<usize> = ui.data(|d| d.get_temp(dragging_id));
     let mut rects: Vec<Rect> = Vec::new();
     for &i in &order {
@@ -884,7 +884,7 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
             .is_some();
         // The menu closed however (Enter, Escape, a click elsewhere): a
         // name typed in it is saved, never lost.
-        let typed = Id::new(("rename-window", i));
+        let typed = Id::unique(("rename-window", i));
         if !open
             && let Some(text) = ui.data_mut(|d| d.remove_temp::<String>(typed))
             && text.trim() != name.trim()
@@ -1024,7 +1024,7 @@ fn drop_index(slot: usize, from: usize) -> usize {
 /// A window's right-click menu: a name of the user's own (empty: the
 /// automatic one again), and moving it one place up or down.
 fn tab_menu(app: &App, i: usize, name: &str, ui: &mut Ui, actions: &mut Vec<Action>) {
-    let id = Id::new(("rename-window", i));
+    let id = Id::unique(("rename-window", i));
     let mut text: String = ui
         .data(|d| d.get_temp(id))
         .unwrap_or_else(|| name.to_owned());
@@ -1554,11 +1554,11 @@ pub(super) fn sheet(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     let screen = ctx.content_rect();
     // Beside the sidebar: the windows stay in view while the sheet is up.
     let left = ctx
-        .data(|d| d.get_temp::<Rect>(Id::new(SIDEBAR_RECT)))
+        .data(|d| d.get_temp::<Rect>(Id::unique(SIDEBAR_RECT)))
         .map_or(screen.left(), |r| r.right());
     // And beside the clone's chat on the right, while it is open.
     let right = ctx
-        .data(|d| d.get_temp::<Rect>(Id::new(CHAT_RECT)))
+        .data(|d| d.get_temp::<Rect>(Id::unique(CHAT_RECT)))
         .filter(|_| app.chat_open)
         .map_or(screen.right(), |r| r.left());
     let bottom = screen.bottom() - BOTTOM;
@@ -1566,7 +1566,7 @@ pub(super) fn sheet(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     let above = Rect::from_min_max(Pos2::new(left, screen.top()), Pos2::new(right, top));
     let rect = Rect::from_min_max(Pos2::new(left, top), Pos2::new(right, bottom));
 
-    egui::Area::new(Id::new("sheet-scrim"))
+    egui::Area::new(Id::unique("sheet-scrim"))
         .order(Order::Middle)
         .fixed_pos(above.min)
         .show(&ctx, |ui| {
@@ -1576,7 +1576,7 @@ pub(super) fn sheet(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 actions.push(Action::Sheet(false));
             }
         });
-    egui::Area::new(Id::new("sheet"))
+    egui::Area::new(Id::unique("sheet"))
         .order(Order::Middle)
         .fixed_pos(rect.min)
         .show(&ctx, |ui| {

@@ -995,8 +995,14 @@ impl App {
                         .map_or(String::new(), |p| p.display().to_string());
                 });
                 ctx.data_mut(|d| {
-                    d.insert_temp(egui::Id::new("sidebar-sort"), u8::from(config.needs_first));
-                    d.insert_temp(egui::Id::new("sidebar-collapsed"), config.start_collapsed);
+                    d.insert_temp(
+                        egui::Id::unique("sidebar-sort"),
+                        u8::from(config.needs_first),
+                    );
+                    d.insert_temp(
+                        egui::Id::unique("sidebar-collapsed"),
+                        config.start_collapsed,
+                    );
                 });
                 self.herdr_note = Some(format!(
                     "Took herdr's theme ({}), notifications, sounds, sidebar and keys from {}",

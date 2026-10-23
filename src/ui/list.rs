@@ -1100,7 +1100,7 @@ fn alerts(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
     let subtitle = format!("{firing} firing · {} in the last day", app.alerts.len());
     title_bar(ui, "Alerts", &subtitle, bar::hints(&app.view));
     // Two tabs: incident.io's alerts, and the deploy workflows (CI) behind them.
-    let tab = egui::Id::new("alerts-tab");
+    let tab = egui::Id::unique("alerts-tab");
     let deploys: bool = ui.data(|d| d.get_temp(tab)).unwrap_or(false);
     let red = app
         .releases
@@ -1174,7 +1174,7 @@ fn alerts(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                             ui.label(RichText::new("No alerts in the last day.").color(p().text_2));
                         });
                     }
-                    let id = egui::Id::new("alert-open");
+                    let id = egui::Id::unique("alert-open");
                     let open: Option<String> = ui.data(|d| d.get_temp(id));
                     for alert in &app.alerts {
                         let is_open = open.as_deref() == Some(alert.id.as_str());

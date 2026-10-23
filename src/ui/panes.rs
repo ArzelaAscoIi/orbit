@@ -17,7 +17,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
             let layout = app.panes.layout(area);
             let many = layout.panes.len() > 1;
             // A pane that just got focus hands it to its terminal.
-            let seen = Id::new("pane-focus-seen");
+            let seen = Id::unique("pane-focus-seen");
             let changed = ui.data(|d| d.get_temp::<u64>(seen)) != Some(app.panes.focused);
             ui.data_mut(|d| d.insert_temp(seen, app.panes.focused));
             let pressed = ui.input(|i| {
@@ -42,7 +42,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                     actions.push(Action::FocusPane(id));
                 }
                 if changed && id == app.panes.focused {
-                    ui.data_mut(|d| d.insert_temp(Id::new("terminal-grab"), rect));
+                    ui.data_mut(|d| d.insert_temp(Id::unique("terminal-grab"), rect));
                 }
                 let mut pane = ui.new_child(
                     UiBuilder::new()
@@ -82,7 +82,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 ui.painter().rect_filled(divider, 0.0, p().line_2);
                 let handle = ui.interact(
                     divider.expand(3.0),
-                    Id::new(("divider", split)),
+                    Id::unique(("divider", split)),
                     Sense::drag(),
                 );
                 let cursor = if across {
@@ -207,7 +207,7 @@ fn editor(app: &mut App, id: u64, ui: &mut Ui, actions: &mut Vec<Action>) {
         actions.push(Action::ClosePane(Some(id)));
         return;
     };
-    let field = Id::new(("editor", id));
+    let field = Id::unique(("editor", id));
     let focused = ui.memory(|m| m.has_focus(field));
     let size = egui::vec2(ui.available_width(), PANE_BAR);
     ui.allocate_ui_with_layout(size, Layout::right_to_left(Align::Center), |ui| {
@@ -400,8 +400,8 @@ pub(super) fn address(
     ui: &mut Ui,
     actions: &mut Vec<Action>,
 ) {
-    let field_id = Id::new(("browser-address-field", slot));
-    let text_id = Id::new(("browser-address", slot));
+    let field_id = Id::unique(("browser-address-field", slot));
+    let text_id = Id::unique(("browser-address", slot));
     let mut text = if ui.memory(|m| m.has_focus(field_id)) {
         ui.data(|d| d.get_temp::<String>(text_id))
             .unwrap_or_default()
@@ -432,9 +432,9 @@ pub(super) fn find_bar(
     if !browser.finding {
         return;
     }
-    let field_id = Id::new(("browser-find-field", slot));
-    let text_id = Id::new(("browser-find", slot));
-    let seen_id = Id::new(("browser-find-seen", slot));
+    let field_id = Id::unique(("browser-find-field", slot));
+    let text_id = Id::unique(("browser-find", slot));
+    let seen_id = Id::unique(("browser-find-seen", slot));
     let mut text = ui
         .data(|d| d.get_temp::<String>(text_id))
         .unwrap_or_default();

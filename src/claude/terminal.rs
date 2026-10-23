@@ -190,8 +190,8 @@ impl Terminal {
         drop(pair.slave);
 
         let screen = Arc::new(Mutex::new(vt100::Parser::new_with_callbacks(
-            size.0,
-            size.1,
+            cells(size.0),
+            cells(size.1),
             5000,
             Title::default(),
         )));
@@ -338,7 +338,7 @@ impl Terminal {
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .screen_mut()
-            .set_size(rows, cols);
+            .set_size(cells(rows), cells(cols));
         let _ = self.master.resize(PtySize {
             rows,
             cols,
@@ -369,7 +369,7 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
         response.request_focus();
     }
     // A pane that just got focus asks for its terminal to take the keys.
-    let grab = egui::Id::new("terminal-grab");
+    let grab = egui::Id::unique("terminal-grab");
     if ui
         .data(|d| d.get_temp::<Rect>(grab))
         .is_some_and(|area| area.contains_rect(rect))
@@ -658,13 +658,18 @@ fn selected_text(screen: &vt100::Screen, a: (u16, u16), b: (u16, u16)) -> String
 /// and where column `col` of `row` lands in them.
 // ponytail: only terminal wraps join; a URL Claude itself broke over two rows
 // opens its first part.
+/// A size for vt100, which takes no zero: an unlaid pane counts as one cell.
+fn cells(n: u16) -> std::num::NonZeroU16 {
+    std::num::NonZeroU16::new(n).unwrap_or(std::num::NonZeroU16::MIN)
+}
+
 fn logical_line(screen: &vt100::Screen, row: u16, col: usize, cols: u16) -> (Vec<String>, usize) {
     let mut first = row;
     while first > 0 && screen.row_wrapped(first - 1) {
         first -= 1;
     }
     let mut last = row;
-    while screen.row_wrapped(last) && last + 1 < screen.size().0 {
+    while screen.row_wrapped(last) && last + 1 < screen.size().0.get() {
         last += 1;
     }
     let cells = (first..=last)
@@ -864,7 +869,11 @@ mod tests {
 
     #[test]
     fn a_poisoned_screen_still_draws() {
-        let screen = std::sync::Arc::new(std::sync::Mutex::new(vt100::Parser::new(2, 10, 0)));
+        let screen = std::sync::Arc::new(std::sync::Mutex::new(vt100::Parser::new(
+            super::cells(2),
+            super::cells(10),
+            0,
+        )));
         let reader = screen.clone();
         let _ = std::thread::spawn(move || {
             let _guard = reader.lock().unwrap();
@@ -873,7 +882,7 @@ mod tests {
         .join();
         assert!(screen.is_poisoned());
         let parser = screen.lock().unwrap_or_else(PoisonError::into_inner);
-        assert_eq!(parser.screen().size(), (2, 10));
+        assert_eq!(parser.screen().size(), (super::cells(2), super::cells(10)));
     }
 
     #[test]
@@ -937,7 +946,7 @@ mod tests {
         assert_eq!(url_at(&cells, 3), None);
 
         // Wrapped by the terminal over two rows: a click on either row finds it.
-        let mut parser = vt100::Parser::new(5, 20, 0);
+        let mut parser = vt100::Parser::new(super::cells(5), super::cells(20), 0);
         parser.process(b"go https://linear.app/a/issue/ENG-1 now");
         for (row, col) in [(0, 5), (1, 3)] {
             let (line, col) = logical_line(parser.screen(), row, col, 20);
@@ -950,7 +959,7 @@ mod tests {
 
     #[test]
     fn a_drag_copies_the_cells_between_its_ends_in_either_direction() {
-        let mut parser = vt100::Parser::new(5, 20, 0);
+        let mut parser = vt100::Parser::new(super::cells(5), super::cells(20), 0);
         parser.process(b"hello world\r\nsecond line");
         let screen = parser.screen();
         assert_eq!(selected_text(screen, (0, 6), (0, 11)), "world");

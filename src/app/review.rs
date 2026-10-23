@@ -131,7 +131,7 @@ pub(super) fn tick(app: &mut App, ctx: &egui::Context) {
     {
         match what.as_str() {
             "open" => {
-                ctx.data_mut(|d| d.insert_temp(egui::Id::new("alert-open"), first));
+                ctx.data_mut(|d| d.insert_temp(egui::Id::unique("alert-open"), first));
             }
             what => app.apply(
                 Action::InvestigateAlert {
@@ -266,25 +266,25 @@ fn screenshot(app: &App, ctx: &egui::Context) {
         .ok()
         .and_then(|d| d.parse().ok())
         .unwrap_or(0.0);
-    let image = ctx.input(|i| {
-        i.raw.events.iter().find_map(|e| match e {
-            egui::Event::Screenshot { image, .. } => Some(image.clone()),
-            _ => None,
-        })
-    });
-    if let Some(image) = image {
-        let [w, h] = image.size;
-        let mut ppm = format!("P6 {w} {h} 255\n").into_bytes();
-        ppm.extend(image.pixels.iter().flat_map(|p| [p.r(), p.g(), p.b()]));
-        let _ = std::fs::write(path, ppm);
-        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-    } else if (app.loaded_at.is_some() || !app.checking())
+    if (app.loaded_at.is_some() || !app.checking())
         && ctx.input(|i| i.time) > delay
         && !REQUESTED.swap(true, Ordering::Relaxed)
     {
-        ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+        let shown = ctx.clone();
+        ctx.request_screenshot(move |image| {
+            save_ppm(std::path::Path::new(&path), &image);
+            shown.send_viewport_cmd(egui::ViewportCommand::Close);
+        });
     }
     ctx.request_repaint();
+}
+
+/// A frame as PPM (no image crate needed; `sips` converts it).
+fn save_ppm(path: &std::path::Path, image: &egui::ColorImage) {
+    let [w, h] = image.size;
+    let mut ppm = format!("P6 {w} {h} 255\n").into_bytes();
+    ppm.extend(image.pixels.iter().flat_map(|p| [p.r(), p.g(), p.b()]));
+    let _ = std::fs::write(path, ppm);
 }
 
 /// Simulated users (scripts/simulate.sh): `ORBIT_SIMULATE=<steps.json>`
@@ -305,7 +305,8 @@ pub(super) fn simulate(app: &mut App, ctx: &egui::Context) {
         steps: Vec<String>,
         next: usize,
         until: f64,
-        shooting: Option<String>,
+        /// A `shot` asked for, until its frame is saved.
+        shooting: Option<std::sync::Arc<AtomicBool>>,
         log: Vec<String>,
     }
     static RUN: Mutex<Option<Run>> = Mutex::new(None);
@@ -335,19 +336,8 @@ pub(super) fn simulate(app: &mut App, ctx: &egui::Context) {
         return;
     }
     let now = ctx.input(|i| i.time);
-    if let Some(name) = run.shooting.clone() {
-        let image = ctx.input(|i| {
-            i.raw.events.iter().find_map(|e| match e {
-                egui::Event::Screenshot { image, .. } => Some(image.clone()),
-                _ => None,
-            })
-        });
-        if let Some(image) = image {
-            let [w, h] = image.size;
-            let mut ppm = format!("P6 {w} {h} 255\n").into_bytes();
-            ppm.extend(image.pixels.iter().flat_map(|p| [p.r(), p.g(), p.b()]));
-            let _ = std::fs::create_dir_all(&out);
-            let _ = std::fs::write(out.join(format!("{name}.ppm")), ppm);
+    if let Some(saved) = &run.shooting {
+        if saved.load(Ordering::Relaxed) {
             run.shooting = None;
         }
         return;
@@ -370,8 +360,14 @@ pub(super) fn simulate(app: &mut App, ctx: &egui::Context) {
             "ok".to_owned()
         }
         Ok(None) if verb == "shot" => {
-            run.shooting = Some(rest.trim().to_owned());
-            ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+            let saved = std::sync::Arc::new(AtomicBool::new(false));
+            run.shooting = Some(saved.clone());
+            let file = out.join(format!("{}.ppm", rest.trim()));
+            ctx.request_screenshot(move |image| {
+                let _ = file.parent().map(std::fs::create_dir_all);
+                save_ppm(&file, &image);
+                saved.store(true, Ordering::Relaxed);
+            });
             "ok".to_owned()
         }
         Ok(None) => {

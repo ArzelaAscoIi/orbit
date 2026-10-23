@@ -995,12 +995,12 @@ pub(super) fn mark(app: &App, ui: &Ui, anchor: &'static str, rect: Rect) {
     let visible = rect.intersect(ui.clip_rect());
     let pass = ui.ctx().cumulative_pass_nr();
     ui.ctx()
-        .data_mut(|d| d.insert_temp(Id::new(("tutorial", anchor)), (visible, pass)));
+        .data_mut(|d| d.insert_temp(Id::unique(("tutorial", anchor)), (visible, pass)));
 }
 
 /// Where `anchor` was marked this frame, if it was.
 fn marked(ctx: &egui::Context, anchor: &str) -> Option<Rect> {
-    let (rect, pass) = ctx.data(|d| d.get_temp::<(Rect, u64)>(Id::new(("tutorial", anchor))))?;
+    let (rect, pass) = ctx.data(|d| d.get_temp::<(Rect, u64)>(Id::unique(("tutorial", anchor))))?;
     (pass == ctx.cumulative_pass_nr() && rect.is_positive()).then_some(rect)
 }
 
@@ -1046,7 +1046,7 @@ pub(super) fn overlay(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
         .map(|r| r.expand(4.0));
 
     // Dim around the target, and swallow clicks on everything but the card.
-    let layer = LayerId::new(Order::Foreground, Id::new("tutorial-scrim"));
+    let layer = LayerId::new(Order::Foreground, Id::unique("tutorial-scrim"));
     let painter = ctx.layer_painter(layer);
     let scrim = theme::scrim();
     match target {
@@ -1076,7 +1076,7 @@ pub(super) fn overlay(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
             painter.rect_filled(screen, 0.0, scrim);
         }
     }
-    egui::Area::new(Id::new("tutorial-block"))
+    egui::Area::new(Id::unique("tutorial-block"))
         .order(Order::Foreground)
         .fixed_pos(screen.min)
         .show(&ctx, |ui| {
@@ -1084,9 +1084,9 @@ pub(super) fn overlay(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
         });
 
     let last = i + 1 == STEPS.len();
-    let size_id = Id::new("tutorial-card-size");
+    let size_id = Id::unique("tutorial-card-size");
     let size = ctx.data(|d| d.get_temp::<Vec2>(size_id)).unwrap_or(CARD);
-    let card = egui::Area::new(Id::new("tutorial-card"))
+    let card = egui::Area::new(Id::unique("tutorial-card"))
         .order(Order::Tooltip)
         .fixed_pos(place(target, size, screen))
         .show(&ctx, |ui| {

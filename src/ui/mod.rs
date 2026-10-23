@@ -145,7 +145,7 @@ pub fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     // Last but the tutorial: it searches what everything else drew.
     find::show(app, ui);
     // A link clicked in a ticket's markdown, kept for this frame's actions.
-    let clicked = egui::Id::new(widgets::MARKDOWN_LINK);
+    let clicked = egui::Id::unique(widgets::MARKDOWN_LINK);
     if let Some(url) = ui.ctx().data_mut(|d| d.remove_temp::<String>(clicked)) {
         actions.push(Action::Link(url));
     }
@@ -489,7 +489,7 @@ fn clone_chat(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
             }
         });
     ui.ctx()
-        .data_mut(|d| d.insert_temp(egui::Id::new(bar::CHAT_RECT), panel.response.rect));
+        .data_mut(|d| d.insert_temp(egui::Id::unique(bar::CHAT_RECT), panel.response.rect));
     mark(app, ui, "clone-chat", panel.response.rect);
 }
 
@@ -497,7 +497,7 @@ fn clone_chat(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
 /// same); its hourly pass lives in the chat panel.
 fn clone_switch(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
     let looping = app.claude.live_of(crate::claude::OPERATOR).is_some();
-    let area = egui::Area::new(egui::Id::new(widgets::CLONE_SWITCH))
+    let area = egui::Area::new(egui::Id::unique(widgets::CLONE_SWITCH))
         .order(egui::Order::Foreground)
         .anchor(Align2::RIGHT_TOP, egui::vec2(-12.0, 8.0))
         .show(ui.ctx(), |ui| {
@@ -633,7 +633,7 @@ fn finished_missions(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
         }
     }
     if !earlier.is_empty() {
-        let id = egui::Id::new("missions-earlier");
+        let id = egui::Id::unique("missions-earlier");
         let open: bool = ui.data(|d| d.get_temp(id)).unwrap_or(false);
         let text = if open {
             "− earlier".to_owned()
@@ -652,7 +652,7 @@ fn finished_missions(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
 }
 
 fn fold(ui: &mut Ui, title: &str, open_at_first: bool) -> bool {
-    let id = egui::Id::new(("fold", title));
+    let id = egui::Id::unique(("fold", title));
     let open: bool = ui.data(|d| d.get_temp(id)).unwrap_or(open_at_first);
     let sign = if open { "−" } else { "+" };
     if link(ui, label(&format!("// {title} {sign}")))
@@ -793,7 +793,7 @@ fn toasts(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
         });
     }
     let shown: Vec<&Shown> = items.iter().rev().take(2).collect();
-    let area = egui::Area::new(egui::Id::new("toasts"))
+    let area = egui::Area::new(egui::Id::unique("toasts"))
         .order(egui::Order::Foreground)
         .anchor(
             Align2::RIGHT_BOTTOM,

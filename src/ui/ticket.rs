@@ -1201,14 +1201,14 @@ pub(super) fn preview(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<
 /// Whether the request-review field is open for `url` (one id for the
 /// whole window: More's popup and the row share it).
 fn review_open(url: &str, ui: &Ui) -> bool {
-    ui.data(|d| d.get_temp(egui::Id::new(("review-open", url))))
+    ui.data(|d| d.get_temp(egui::Id::unique(("review-open", url))))
         .unwrap_or(false)
 }
 
 /// Opens the request-review field beside the buttons (from More, or the
 /// lead on the user's own PR) and loads who may review on the repo.
 fn open_review(pr: &story::Pr, ui: &Ui, actions: &mut Vec<Action>) {
-    ui.data_mut(|d| d.insert_temp(egui::Id::new(("review-open", &pr.url)), true));
+    ui.data_mut(|d| d.insert_temp(egui::Id::unique(("review-open", &pr.url)), true));
     actions.push(Action::LoadReviewers(format!("{}/{}", pr.owner, pr.repo)));
 }
 
@@ -1230,8 +1230,8 @@ fn review_form(app: &App, pr: &story::Pr, ui: &mut Ui, actions: &mut Vec<Action>
         .map(|(_, login)| login.as_str())
         .collect();
     // Inline, not in a popup menu: a text field in a popup lost the keys.
-    let open_id = egui::Id::new(("review-open", &pr.url));
-    let login_id = egui::Id::new(("review-login", &pr.url));
+    let open_id = egui::Id::unique(("review-open", &pr.url));
+    let login_id = egui::Id::unique(("review-login", &pr.url));
     if review_open(&pr.url, ui) {
         let mut login: String = ui.data(|d| d.get_temp(login_id)).unwrap_or_default();
         let field = ui.add(

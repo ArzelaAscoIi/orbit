@@ -179,7 +179,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     state.selected = state.selected.min(last);
     let mut run = None;
 
-    egui::Area::new(egui::Id::new("palette"))
+    egui::Area::new(egui::Id::unique("palette"))
         .order(egui::Order::Foreground)
         .anchor(Align2::CENTER_TOP, egui::vec2(0.0, 70.0))
         .show(&ctx, |ui| {

@@ -47,13 +47,13 @@ const KEYS: &str = r#"document.addEventListener('keydown', function (e) {
 /// Asks for the browser in `slot` this frame, filling `rect`, starting at `home`.
 pub fn place(ctx: &egui::Context, slot: u64, rect: Rect, home: &str) {
     let pass = ctx.cumulative_pass_nr();
-    ctx.data_mut(|d| d.insert_temp(Id::new(("browser", slot)), (rect, home.to_owned(), pass)));
+    ctx.data_mut(|d| d.insert_temp(Id::unique(("browser", slot)), (rect, home.to_owned(), pass)));
 }
 
 /// This frame's request for `slot`, if a view made one.
 fn placed(ctx: &egui::Context, slot: u64) -> Option<(Rect, String)> {
     let (rect, home, pass) =
-        ctx.data(|d| d.get_temp::<(Rect, String, u64)>(Id::new(("browser", slot))))?;
+        ctx.data(|d| d.get_temp::<(Rect, String, u64)>(Id::unique(("browser", slot))))?;
     (pass == ctx.cumulative_pass_nr() && rect.is_positive()).then_some((rect, home))
 }
 

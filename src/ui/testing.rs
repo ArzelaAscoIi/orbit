@@ -96,7 +96,7 @@ fn steps(
     let mut checked = 0;
     hairline(ui);
     for (i, step) in plan.steps.iter().enumerate() {
-        let key = egui::Id::new(("test-step", id, i));
+        let key = egui::Id::unique(("test-step", id, i));
         let on = ui.data(|d| d.get_temp::<bool>(key)).unwrap_or(false);
         checked += usize::from(on);
         ui.horizontal_top(|ui| {
@@ -184,7 +184,7 @@ fn browser_pane(
         return;
     }
     // The preview once it is up, dev until then; the user's pick wins.
-    let key = egui::Id::new(("test-on-preview", &card.issue.id));
+    let key = egui::Id::unique(("test-on-preview", &card.issue.id));
     let ready = preview.as_ref().is_some_and(|(_, url)| url.is_some());
     let on_preview = preview.is_some()
         && (dev.is_empty() || ui.data(|d| d.get_temp::<bool>(key)).unwrap_or(ready));
@@ -262,8 +262,8 @@ fn browser_pane(
             actions.push(Action::Open(app.browser.current().to_owned()));
         }
         // The address shows where the page is, until you type in it.
-        let field_id = egui::Id::new("browser-address-field");
-        let text_id = egui::Id::new("browser-address");
+        let field_id = egui::Id::unique("browser-address-field");
+        let text_id = egui::Id::unique("browser-address");
         let mut text = if ui.memory(|m| m.has_focus(field_id)) {
             ui.data(|d| d.get_temp::<String>(text_id))
                 .unwrap_or_default()

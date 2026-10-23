@@ -49,6 +49,9 @@ fix: ## format and apply clippy's suggestions
 shot: ## screenshot a view: make shot VIEW=foryou|stories|intake|sessions|customers [TAB=claude]
 	@$(ENV) scripts/shot.sh $(or $(VIEW),foryou) $(TAB)
 
+licenses: ## every dependency's license is on deny.toml's list (cargo install --locked cargo-deny)
+	cargo deny check licenses
+
 bundle: ## build dist/Orbit.app (Apple silicon, ad-hoc signed)
 	scripts/bundle-macos.sh
 
@@ -61,4 +64,4 @@ upstream: ## in a fork: send commits upstream as a PR: make upstream C="<sha> <s
 release: ## cut a release: make release V=0.2.0 (tag, push; CI publishes the zip)
 	scripts/release.sh $(V)
 
-.PHONY: help run dev watch check fmt-check lint test fix shot bundle sync upstream release
+.PHONY: help run dev watch check fmt-check lint test fix shot licenses bundle sync upstream release

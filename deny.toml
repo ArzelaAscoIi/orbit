@@ -1,0 +1,31 @@
+# `cargo deny check licenses` (make licenses, CI's "licenses" job): every
+# dependency's license must be on this list. All permissive, except
+# MPL-2.0, which is copyleft per file only: fine while those files are
+# used unmodified. A GPL-only (or any unlisted) license fails the check.
+# Vulnerabilities stay with `cargo audit` (ci.yml).
+
+[graph]
+# The app ships for macOS only (scripts/bundle-macos.sh).
+targets = ["aarch64-apple-darwin"]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unlicense",
+    "0BSD",
+    "BSL-1.0",
+    "Unicode-3.0",
+    "MPL-2.0",
+    # egui's bundled fonts.
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+]
+
+[licenses.private]
+ignore = true

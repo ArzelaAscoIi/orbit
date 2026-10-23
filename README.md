@@ -181,3 +181,5 @@ make check    # fmt + clippy + tests
 ## License
 
 MIT. Built with Claude Code, for people who build with Claude Code.
+
+Third-party licenses ship in `Orbit.app/Contents/Resources/THIRD_PARTY_LICENSES.html`; CI fails on a dependency outside [deny.toml](deny.toml)'s list.

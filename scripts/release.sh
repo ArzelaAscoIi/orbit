@@ -15,7 +15,9 @@ version="${1:?usage: scripts/release.sh <version>, e.g. 0.2.0}"
 [ -z "$(git status --porcelain)" ] || { echo "commit or stash your changes first" >&2; exit 1; }
 git rev-parse -q --verify "refs/tags/v$version" >/dev/null && { echo "v$version exists" >&2; exit 1; }
 
-git pull --ff-only origin main
+remotes=(${RELEASE_REMOTES:-origin})
+# Up to date with the first remote it pushes to.
+git pull --ff-only "${remotes[0]}" main
 # The first `version =` is the package's; dependencies' come later.
 perl -0pi -e "s/^version = \".*?\"/version = \"$version\"/m" Cargo.toml
 cargo check --quiet   # brings Cargo.lock along
@@ -23,7 +25,7 @@ make check
 git add Cargo.toml Cargo.lock
 git commit -m "Release v$version"
 git tag -a "v$version" -m "Orbit v$version"
-for remote in ${RELEASE_REMOTES:-origin}; do
+for remote in "${remotes[@]}"; do
   git push "$remote" main "v$version"
 done
 echo "Tagged v$version. GitHub Actions on each pushed repo builds and publishes it."

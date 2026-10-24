@@ -18,10 +18,11 @@ VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
 
 mkdir -p "$APP/Contents/MacOS"
 cp "$SRC" "$APP/Contents/MacOS/$BIN"
-# Further files go to Contents/Resources (the license notices), before
-# the signature seals them.
+# The icon (scripts/icon.sh) and further files (the license notices) go
+# to Contents/Resources, before the signature seals them.
+mkdir -p "$APP/Contents/Resources"
+cp assets/icon/AppIcon.icns "$APP/Contents/Resources/"
 if [ $# -gt 2 ]; then
-  mkdir -p "$APP/Contents/Resources"
   cp "${@:3}" "$APP/Contents/Resources/"
 fi
 
@@ -34,6 +35,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>${BUNDLE_ID:-dev.orbit.$BIN}</string>
   <key>CFBundleExecutable</key><string>$BIN</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleIconName</key><string>AppIcon</string>
   <key>CFBundleShortVersionString</key><string>${VERSION%%-*}</string>
   <key>CFBundleVersion</key><string>${VERSION%%-*}</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>

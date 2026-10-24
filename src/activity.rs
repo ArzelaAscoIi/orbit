@@ -174,6 +174,7 @@ pub const GATES: &[(&str, Gate)] = &[
     ("SheetQuery", Gate::Look),
     ("HerdrFocus", Gate::Look),
     ("Find", Gate::Look),
+    ("FindClose", Gate::Look),
     ("Split", Gate::Look),
     ("CloseWindow", Gate::Look),
     ("ReopenWindow", Gate::Look),

@@ -1021,7 +1021,11 @@ fn composer(
                             .on_disabled_hover_text(why);
                     }
                 }
-                if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                // Esc from the box itself (or an empty one): Esc meant for a
+                // terminal beside the diff never throws a comment away.
+                let escape = ui.input(|i| i.key_pressed(egui::Key::Escape))
+                    && (field.has_focus() || field.lost_focus() || text.trim().is_empty());
+                if ui.button("Cancel").clicked() || escape {
                     close = true;
                 }
             });

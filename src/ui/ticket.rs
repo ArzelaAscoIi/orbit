@@ -236,6 +236,11 @@ fn tabs(
                         ui.horizontal(|ui| {
                             let color = if selected { p().text } else { p().text_2 };
                             ui.label(RichText::new(name).family(medium()).color(color));
+                            // Its key, while it is not the open tab.
+                            if tab == Tab::Diff && !selected {
+                                ui.add_space(4.0);
+                                ui.label(label("d").color(p().text_3));
+                            }
                             if let Some(color) = dot_color {
                                 dot(ui, color);
                             }

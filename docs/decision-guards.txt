@@ -340,3 +340,4 @@
 2026-10-21 · settings · A saved Anthropic key can be dropped for Claude Code's login => test:typing_claude_code_for_the_key_means_its_login; code:src/ui/settings.rs:"Use Claude Code's login instead"
 2026-10-24 · diff · The Diff tab colours code by language (keywords, strings, co => test:python_reads_as_keywords_strings_and_comments; code:src/github.rs:file.spans = crate::syntax::spans(file);
 2026-10-24 · licenses · Orbit ships no fonts and no copyleft code: theme.rs reads Ge => test:the_macs_fonts_cover_every_glyph_orbit_draws; code:src/theme.rs:system_fonts(&font_dirs())
+2026-10-25 · sign-in · Linear is optional: "Continue without Linear" on the sign-in => test:without_linear_only_linear_commands_are_dropped; test:ticket_views_need_linear_and_the_rest_do_not; test:running_without_linear_is_remembered_in_settings; code:src/ui/login.rs:Continue without Linear

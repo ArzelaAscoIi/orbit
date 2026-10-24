@@ -67,6 +67,18 @@ impl App {
                 self.key_input.clear();
                 self.apply(Action::Refresh, ctx);
             }
+            Action::ContinueWithoutLinear => {
+                self.save_settings(|s| s.no_linear = true);
+                self.sign_in_error = None;
+                // GitHub's commands still go through it; Linear's are dropped.
+                if self.backend.is_none() {
+                    self.backend = Some(Backend::spawn("", ctx.clone()));
+                }
+            }
+            Action::ConnectLinear => {
+                self.save_settings(|s| s.no_linear = false);
+                self.backend = None;
+            }
             Action::SignInWithLinear => {
                 self.sign_in_error = None;
                 self.oauth = Some(crate::oauth::sign_in(ctx.clone()));
@@ -175,6 +187,10 @@ impl App {
             }
             Action::Refresh => {
                 self.load_gate();
+                // No board without Linear: nothing to load, never loading.
+                if self.no_linear() {
+                    return;
+                }
                 self.last_request += 1;
                 self.loading = true;
                 self.refreshed = Some(std::time::Instant::now());

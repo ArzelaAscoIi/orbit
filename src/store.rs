@@ -192,6 +192,10 @@ pub struct Settings {
     pub keep_idle_sessions: bool,
     /// Hours a session may sit idle before it is stopped; 0: 12.
     pub idle_session_hours: u32,
+    /// Runs without Linear ("Continue without Linear" on the sign-in
+    /// screen): sessions, shells and GitHub PRs work, tickets do not, and
+    /// Linear is never asked. Signing in with Linear turns it off.
+    pub no_linear: bool,
 }
 
 /// Laya (laya.rs), optional and exchangeable with Haiku for the New ticket

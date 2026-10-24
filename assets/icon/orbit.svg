@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2c33"/><stop offset="1" stop-color="#141519"/></linearGradient>
+    <linearGradient id="planet" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5a5e68"/><stop offset="1" stop-color="#2a2c32"/></linearGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c3c7cf"/></linearGradient>
+    <clipPath id="front"><rect x="-600" y="-4" width="1200" height="604"/></clipPath>
+    <mask id="onplanet"><rect x="-600" y="-600" width="1200" height="1200" fill="black"/><circle r="165" fill="white"/></mask>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184.5" fill="none" stroke="#fff" stroke-opacity=".08"/>
+  <g transform="translate(512 512)">
+    <g transform="rotate(-25)"><ellipse rx="320" ry="118" fill="none" stroke="url(#white)" stroke-width="32"/></g>
+    <circle r="165" fill="url(#planet)"/>
+    <g mask="url(#onplanet)"><g transform="rotate(-25)" clip-path="url(#front)"><ellipse rx="320" ry="118" fill="none" stroke="#202227" stroke-width="72"/></g></g>
+    <g transform="rotate(-25)" clip-path="url(#front)"><ellipse rx="320" ry="118" fill="none" stroke="url(#white)" stroke-width="32"/></g>
+    <circle cx="169.8" cy="-171.2" r="60" fill="#202227"/>
+    <circle cx="169.8" cy="-171.2" r="42" fill="#f4f4f5"/>
+  </g>
+</svg>

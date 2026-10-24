@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon/icon-256.png" width="96" alt=""></p>
+
 <h1 align="center">Orbit</h1>
 
 <p align="center">

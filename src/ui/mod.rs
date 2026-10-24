@@ -854,6 +854,26 @@ fn toasts(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 }
                 ui.add_space(6.0);
             }
+            // More waiting behind the two: one click clears them all,
+            // not one × per toast.
+            let more = items.len().saturating_sub(shown.len());
+            if more > 0 {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if link(
+                        ui,
+                        label(&format!("+{more} more · clear all")).color(p().text_2),
+                    )
+                    .on_hover_text("Close every notification here")
+                    .clicked()
+                    {
+                        actions.extend(
+                            app.toasts
+                                .iter()
+                                .map(|t| Action::DismissToast(t.key.clone())),
+                        );
+                    }
+                });
+            }
         });
     mark(app, ui, "toasts", area.response.rect);
 }
@@ -866,6 +886,18 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
     use egui::{Key, Modifiers};
     // herdr's prefix keys first, while the user's herdr config is in use.
     bar::herdr_keys(app, ui, actions);
+    let focused = ui.ctx().memory(|m| m.focused());
+    let find_has_keys = focused == Some(find::field_id());
+    // Esc closes find first, it is on top of everything; not while a
+    // terminal or another field has the keys (Esc is Claude's interrupt
+    // there). Its × always closes it.
+    if find_escapes(app.find.is_some(), focused, find::field_id())
+        && ui
+            .ctx()
+            .input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+    {
+        actions.push(Action::FindClose);
+    }
     let overlay = app.palette.is_some() || app.capture.is_some() || app.tutorial.is_some();
     if app.sheet && !overlay {
         bar::keys(app, ui, actions);
@@ -912,15 +944,17 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
         if i.consume_key(shift, Key::F) {
             actions.push(Action::Improve);
         }
-        // Over a browser pane, Cmd+F finds in its page.
+        // Over a browser pane, Cmd+F finds in its page; again while find
+        // has the keys, it closes.
         if i.consume_key(Modifiers::COMMAND, Key::F) {
             let focused = app.panes.focused;
             if app.panes.surface(focused) == Some(&crate::app::panes::Surface::Browser) {
                 actions.push(Action::BrowserFindOpen(focused));
             } else {
-                actions.push(Action::Find);
+                actions.push(cmd_f(app.find.is_some(), find_has_keys));
             }
         }
+
         if i.consume_key(Modifiers::COMMAND, Key::K) {
             actions.push(Action::TogglePalette);
         }
@@ -1073,6 +1107,23 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
     });
 }
 
+/// Whether Esc closes find: while it is open and has the keys, or nothing
+/// does; never while a terminal or another field has them (Esc is Claude's
+/// interrupt in a session).
+fn find_escapes(open: bool, focused: Option<egui::Id>, field: egui::Id) -> bool {
+    open && focused.is_none_or(|id| id == field)
+}
+
+/// Cmd+F off a browser: opens find or gives it the keys again; pressed
+/// while find has them, it closes.
+fn cmd_f(open: bool, has_keys: bool) -> Action {
+    if open && has_keys {
+        Action::FindClose
+    } else {
+        Action::Find
+    }
+}
+
 /// The window `by` steps from `at` in a strip of `len`, wrapping around.
 fn step(at: usize, len: usize, by: i32) -> usize {
     (at as i64 + by as i64).rem_euclid(len.max(1) as i64) as usize
@@ -1080,6 +1131,22 @@ fn step(at: usize, len: usize, by: i32) -> usize {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn find_closes_from_its_field_its_key_or_nothing_focused_never_a_terminal() {
+        use super::{cmd_f, find_escapes};
+        use crate::app::Action;
+        let field = egui::Id::unique("find");
+        let terminal = egui::Id::unique("terminal");
+        assert!(find_escapes(true, Some(field), field));
+        // Clicked away: the field lost the keys, Esc still closes it.
+        assert!(find_escapes(true, None, field));
+        assert!(!find_escapes(true, Some(terminal), field));
+        assert!(!find_escapes(false, None, field));
+        assert!(matches!(cmd_f(true, true), Action::FindClose));
+        assert!(matches!(cmd_f(true, false), Action::Find));
+        assert!(matches!(cmd_f(false, false), Action::Find));
+    }
+
     #[test]
     fn the_clone_switch_counts_the_clones_at_work() {
         assert_eq!(super::clone_switch_text(0, 0, ""), "clone ⌘J");

@@ -348,6 +348,8 @@ pub enum Action {
     PaletteQuery(String),
     /// Opens find on the screen (Cmd+F), or gives it the keyboard again.
     Find,
+    /// Closes find on the screen (its ×, Esc, Cmd+F while it has the keys).
+    FindClose,
     ReadNote,
     CreateTicket,
     /// Adds the report to the duplicate at this index instead of filing it.
@@ -850,6 +852,9 @@ pub struct App {
     pub read: HashMap<String, u64>,
     /// The New ticket window, while open.
     pub capture: Option<Capture>,
+    /// A report closed before it was filed (Esc, ×): New ticket opens on
+    /// it again, so nothing typed is lost.
+    pub capture_draft: String,
     /// The spotter's last answer (work.rs), the spots already started, and
     /// when its file was last looked at.
     pub spots: Option<Result<crate::work::Spots, String>>,
@@ -1221,6 +1226,7 @@ impl App {
             notify_previous: None,
             goals_tried: None,
             capture: None,
+            capture_draft: String::new(),
             find: None,
             palette: None,
             incident_key: secrets::get(Secret::IncidentIo),
@@ -3202,7 +3208,17 @@ const REPEAT_MS: u64 = 5_000;
 fn repeat_counts(name: &str) -> bool {
     !matches!(
         name,
-        "PaneRatio" | "LoadImage" | "GoWindow" | "CyclePane" | "SheetAt" | "DismissToast" | "Tab"
+        "PaneRatio"
+            | "LoadImage"
+            | "GoWindow"
+            | "MoveWindow"
+            | "CyclePane"
+            | "FocusPane"
+            | "SheetAt"
+            | "SheetQuery"
+            | "ViewedFile"
+            | "DismissToast"
+            | "Tab"
     )
 }
 

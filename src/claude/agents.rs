@@ -338,7 +338,7 @@ fn settled(log: &str, short: &str) -> Option<String> {
 fn config_dir() -> Option<PathBuf> {
     std::env::var_os("CLAUDE_CONFIG_DIR")
         .map(PathBuf::from)
-        .or_else(|| directories::BaseDirs::new().map(|d| d.home_dir().join(".claude")))
+        .or_else(|| crate::store::home().map(|h| h.join(".claude")))
 }
 
 /// Up to the last `bytes` of a file, starting at a whole line.

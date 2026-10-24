@@ -1509,11 +1509,7 @@ impl App {
                 let folder = folder
                     .map(|f| f.trim().to_owned())
                     .filter(|f| !f.is_empty())
-                    .map(|f| match f.strip_prefix("~/") {
-                        Some(rest) => directories::BaseDirs::new()
-                            .map_or_else(|| f.clone().into(), |d| d.home_dir().join(rest)),
-                        None => std::path::PathBuf::from(&f),
-                    });
+                    .map(|f| crate::profile::expand(&f));
                 let spec = claude::free(&key, &name, folder.as_deref(), self.skill_files());
                 // An empty tab takes it (its Claude button); else its own window.
                 let empty = self.selected.is_none()

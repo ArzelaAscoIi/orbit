@@ -11,6 +11,25 @@ pub fn env_os(name: &str) -> Option<OsString> {
         .or_else(|| std::env::var_os(format!("CONTROL_ROOM_{name}")))
 }
 
+/// The user's home folder, from `HOME`.
+pub fn home() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|h| !h.is_empty())
+        .map(PathBuf::from)
+}
+
+/// An app's data folder under `home`, where macOS keeps it (elsewhere the
+/// XDG one, lowercased without spaces, as `directories` named it).
+fn app_data(home: &std::path::Path, name: &str) -> PathBuf {
+    if cfg!(target_os = "macos") {
+        return home.join("Library/Application Support").join(name);
+    }
+    let base = std::env::var_os("XDG_DATA_HOME")
+        .filter(|d| !d.is_empty())
+        .map_or_else(|| home.join(".local/share"), PathBuf::from);
+    base.join(name.to_lowercase().replace(' ', ""))
+}
+
 /// Where the app keeps its files. `ORBIT_DATA` points a test run at
 /// a folder of its own, away from the real sessions and caches.
 pub fn data_dir() -> PathBuf {
@@ -19,13 +38,11 @@ pub fn data_dir() -> PathBuf {
         if let Some(dir) = env_os("DATA") {
             return PathBuf::from(dir);
         }
-        let dir_of = |name: &str| {
-            directories::ProjectDirs::from("", "", name).map(|d| d.data_dir().to_path_buf())
-        };
-        let Some(dir) = dir_of(crate::NAME) else {
+        let Some(home) = home() else {
             return PathBuf::from(".orbit");
         };
-        let previous = crate::PREVIOUS_NAMES.iter().filter_map(|n| dir_of(n));
+        let dir = app_data(&home, crate::NAME);
+        let previous = crate::PREVIOUS_NAMES.iter().map(|n| app_data(&home, n));
         moved(dir, previous)
     })
     .clone()
@@ -416,6 +433,15 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn the_data_folder_is_where_macos_keeps_app_data() {
+        assert_eq!(
+            app_data(std::path::Path::new("/Users/a"), "Orbit"),
+            PathBuf::from("/Users/a/Library/Application Support/Orbit")
+        );
+    }
 
     /// Every settings.json field says what it is for, right where it is
     /// declared: the Settings view shows the file with the defaults filled

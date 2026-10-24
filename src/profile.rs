@@ -856,8 +856,7 @@ pub fn is_bundle(source: &str) -> bool {
 
 pub fn expand(path: &str) -> PathBuf {
     match path.strip_prefix("~/") {
-        Some(rest) => directories::BaseDirs::new()
-            .map_or_else(|| PathBuf::from(path), |d| d.home_dir().join(rest)),
+        Some(rest) => crate::store::home().map_or_else(|| PathBuf::from(path), |h| h.join(rest)),
         None => PathBuf::from(path),
     }
 }

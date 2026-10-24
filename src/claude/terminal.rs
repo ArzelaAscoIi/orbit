@@ -107,9 +107,7 @@ impl Terminal {
 
     /// A login shell in `dir` (a split beside another shell), else home.
     pub fn shell_in(dir: Option<&Path>, ctx: &egui::Context) -> Result<Self> {
-        let home = directories::BaseDirs::new()
-            .map(|d| d.home_dir().to_path_buf())
-            .unwrap_or_else(|| "/".into());
+        let home = crate::store::home().unwrap_or_else(|| "/".into());
         let dir = dir.filter(|d| d.is_dir()).unwrap_or(&home);
         Self::spawn_program(Path::new(&shell::shell()), dir, &["-l".into()], ctx)
     }

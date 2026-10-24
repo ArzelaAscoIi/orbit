@@ -198,7 +198,7 @@ pub fn config_path() -> Option<PathBuf> {
     }
     let base = std::env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
-        .or_else(|| directories::BaseDirs::new().map(|d| d.home_dir().join(".config")))?;
+        .or_else(|| crate::store::home().map(|h| h.join(".config")))?;
     Some(base.join("herdr").join("config.toml"))
 }
 
@@ -245,9 +245,9 @@ pub fn parse(text: &str, path: PathBuf) -> Result<Config> {
 /// A path from herdr's config: `~` expanded, relative ones from its folder.
 fn expand(path: &str, dir: &std::path::Path) -> PathBuf {
     if let Some(rest) = path.strip_prefix("~/")
-        && let Some(home) = directories::BaseDirs::new()
+        && let Some(home) = crate::store::home()
     {
-        return home.home_dir().join(rest);
+        return home.join(rest);
     }
     let path = PathBuf::from(path);
     if path.is_absolute() {

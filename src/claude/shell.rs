@@ -191,7 +191,7 @@ pub fn gh_with(args: &[&str], input: Option<&str>) -> Result<String> {
 pub(super) fn trust(cwd: &Path) -> Result<()> {
     let store = std::env::var_os("CLAUDE_CONFIG_DIR")
         .map(PathBuf::from)
-        .or_else(|| directories::BaseDirs::new().map(|d| d.home_dir().to_path_buf()))
+        .or_else(crate::store::home)
         .context("no home directory")?
         .join(".claude.json");
     // Every running claude rewrites this file from its own copy, so an entry

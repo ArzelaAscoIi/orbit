@@ -104,6 +104,7 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
         "Close the session: stopped and off the list (Sessions)",
     ),
     ("r", "Plan again (Plan)"),
+    ("d", "The PR's diff (a ticket or PR with one)"),
     ("⌘C", "Copy the selected terminal text"),
     (
         "⌃B then c v z n p 1…9 …",
@@ -1052,6 +1053,16 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
         }
         if app.view == View::Settings && i.consume_key(Modifiers::NONE, Key::Escape) {
             actions.push(Action::Sheet(false));
+        }
+        if app.tab != Tab::Diff
+            && app
+                .selected
+                .as_deref()
+                .and_then(|id| app.card(id))
+                .is_some_and(|card| !card.prs.is_empty())
+            && i.consume_key(Modifiers::NONE, Key::D)
+        {
+            actions.push(Action::Tab(Tab::Diff));
         }
         if i.consume_key(Modifiers::NONE, Key::O)
             && let Some(card) = app.selected.as_deref().and_then(|id| app.card(id))

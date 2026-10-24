@@ -7,6 +7,9 @@ use super::*;
 use bar::Entry;
 
 pub(super) fn show(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
+    if app.no_linear() && app.view.needs_linear() {
+        return connect_linear(app, ui, actions);
+    }
     let cursor = bar::cursor(app);
     let cursor = cursor.as_ref();
     match app.view {
@@ -669,6 +672,29 @@ fn tickets(app: &App, cursor: Option<&Entry>, ui: &mut Ui, actions: &mut Vec<Act
         });
     });
     mark(app, ui, "list", panel.response.rect);
+}
+
+/// A ticket view without Linear: what it would show, and how to get it.
+fn connect_linear(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
+    let rect = ui
+        .scope(|ui| {
+            title_bar(ui, "Linear is not connected", "", "esc close");
+            pad(ui, |ui| {
+                ui.label(RichText::new("Connect Linear to see tickets here.").color(p().text_2));
+                ui.add_space(8.0);
+                if primary(ui, "Connect Linear").clicked() {
+                    actions.push(Action::ConnectLinear);
+                }
+                ui.add_space(8.0);
+                ui.label(label(
+                    "Without it: paste a GitHub PR link (⌘V) to open it, Repos (9) lists \
+                     your PRs, Sessions (5) your sessions, ⌘N a new tab.",
+                ));
+            });
+        })
+        .response
+        .rect;
+    mark(app, ui, "list", rect);
 }
 
 /// The line an empty list shows: what would be here, plainly.

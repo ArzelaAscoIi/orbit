@@ -418,7 +418,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("laya-download-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let seen = std::sync::atomic::AtomicU64::new(0);
-        download(&reqwest::Client::new(), &dir, |done, total| {
+        download(&crate::http(), &dir, |done, total| {
             assert!(done <= total);
             seen.store(done, std::sync::atomic::Ordering::Relaxed);
         })

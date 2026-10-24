@@ -726,13 +726,11 @@ mod tests {
                 head: head.trim().into(),
                 comments: Vec::new(),
             };
-            body.push_str(&since.context(&reqwest::Client::new()).await);
+            body.push_str(&since.context(&crate::http()).await);
         }
         let files = crate::github::parse(&diff);
         let diff = crate::github::numbered(&files, 60_000);
-        let guide = guide(&reqwest::Client::new(), &key, &body, &diff)
-            .await
-            .unwrap();
+        let guide = guide(&crate::http(), &key, &body, &diff).await.unwrap();
         println!("{guide:#?}");
         // Where each comment would land on GitHub, to check by hand.
         for t in guide.steps.iter().flat_map(|s| &s.think) {

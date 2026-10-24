@@ -281,7 +281,7 @@ impl Client {
             Auth::Header(format!("Bearer {key}"))
         };
         Self {
-            http: reqwest::Client::new(),
+            http: crate::http(),
             auth,
             url: URL.to_owned(),
             stored: || secrets::fresh(Secret::Linear),
@@ -466,7 +466,7 @@ impl Client {
         if !fetchable(url) {
             bail!("not an https address on a public host: {url}");
         }
-        let files = reqwest::Client::builder()
+        let files = crate::http_builder()
             .redirect(reqwest::redirect::Policy::custom(|hop| {
                 if hop.previous().len() < 5 && fetchable(hop.url().as_str()) {
                     hop.follow()

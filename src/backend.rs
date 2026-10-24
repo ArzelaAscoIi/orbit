@@ -605,7 +605,7 @@ async fn run(
     events: std::sync::mpsc::Sender<Event>,
     ctx: egui::Context,
 ) {
-    let http = reqwest::Client::new();
+    let http = crate::http();
     while let Some(command) = commands.recv().await {
         let client = client.clone();
         let http = http.clone();

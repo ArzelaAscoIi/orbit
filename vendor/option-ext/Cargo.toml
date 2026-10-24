@@ -1,0 +1,10 @@
+# Orbit's own stand-in for the crates.io `option-ext` (MPL-2.0), written
+# from scratch under MIT: dirs-sys (through wry's `dirs`) only calls
+# `OptionExt::contains`. Cargo.toml [patch.crates-io] points here.
+[package]
+name = "option-ext"
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+description = "Option::contains for dirs-sys, MIT"
+publish = false

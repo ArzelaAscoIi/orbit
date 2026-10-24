@@ -104,10 +104,10 @@ src/secrets.rs     env var, else one Keychain entry (read once); ORBIT_NO_KEYCHA
 src/skills.rs      GENERIC skills (repo skills/: every core capability, incl. `orbit`: how a session reports to the app), each + the profile's skills/<folder>/EXTRA.md (with_extra); local only
 src/profile.rs     the profile: everything company- or person-specific (bot + commands, role→skill map, KTLO rules, intake routing, prompts' extras, orchestrator, spotter, OAuth app, settings it brings); folder in place or a bundle unpacked; profile::get()
 src/store.rs       data_dir(), load/save JSON (atomic), text_hash, Settings (camelCase, every field defaulted; debug envs, investigate, testAppUrl, keys)
-src/theme.rs       4 palettes (phosphor/amber/graphite/paper) + system, p(), Geist fonts, egui style; the only file with hex colours
+src/theme.rs       4 palettes (phosphor/amber/graphite/paper) + system, p(), fonts (read from the Mac), egui style; the only file with hex colours
 docs/decisions.md  append-only product decision log (see Rules)
 docs/decision-guards.txt  what holds each decision (test / code anchor / replaced); src/guards.rs fails make check when one is missing or broken
-assets/fonts/      Geist + Geist Mono (OFL), embedded with include_bytes!
+vendor/option-ext/ MIT stand-in for option-ext (MPL-2.0), [patch.crates-io]
 skills/            generic operate (Run the operator: works Orbit through orbit ctl, claude::operator), triage, plan, build, fix-pr-comments, land (`/land <PR>`: merge named PRs once CLEAN; Land it and KTLO's batch run it), fix-deploy (a red deploy's Fix it), spot (Work's spotter), goals (Plan my day's goals run), orchestrate (Run the board), profile (/profile: sets up the profile with the user),
                    orbit-improve (Cmd+Shift+F feedback: a session changes this app in a worktree and opens a PR).
                    Company facts go in the profile as skills/<folder>/EXTRA.md (e.g. the company's repo map), never here

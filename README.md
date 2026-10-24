@@ -182,4 +182,6 @@ make check    # fmt + clippy + tests
 
 MIT. Built with Claude Code, for people who build with Claude Code.
 
-Third-party licenses ship in `Orbit.app/Contents/Resources/THIRD_PARTY_LICENSES.html`; CI fails on a dependency outside [deny.toml](deny.toml)'s list.
+Third-party licenses ship in `Orbit.app/Contents/Resources/THIRD_PARTY_LICENSES.html`; CI fails on a dependency outside [deny.toml](deny.toml)'s list (MIT, Apache-2.0, ISC, Zlib, Unicode-3.0).
+
+Fonts: Orbit ships none. It uses Geist and Geist Mono if you have them installed, else the Mac's SF Pro and SF Mono.

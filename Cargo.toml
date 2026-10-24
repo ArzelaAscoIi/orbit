@@ -23,8 +23,11 @@ syntect = { version = "5.3", default-features = false, features = ["default-synt
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "process", "time", "io-util"] }
 # Relative times ("3h ago") on tickets and the bot's timeline.
 jiff = "0.2"
-# rustls so the client builds without OpenSSL on every platform.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json", "http2"] }
+# unicode-rs IDNA instead of ICU4X: 17 Unicode-3.0 crates fewer for `url`.
+idna_adapter = "=1.1"
+# The system's TLS (Security.framework on a Mac): no ring, rustls or their
+# ISC/BSD licenses, and a smaller app.
+reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json", "http2"] }
 # Laya, the bug-or-not decision model (src/laya/), run in-process: candle
 # has ModernBERT, its encoder; tokenizers reads its tokenizer.json.
 candle-core = { version = "0.11", features = ["accelerate"] }
@@ -39,7 +42,6 @@ vt100 = "0.18"
 # already builds it (arboard), this adds the formats tickets carry.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 # Where the ticket-to-session map and each ticket's working folder live.
-directories = "6"
 # Claude Code session ids are UUIDs chosen up front with --session-id, so
 # the app knows the id before the first message and can resume it later.
 uuid = { version = "1", features = ["v4"] }
@@ -47,8 +49,8 @@ uuid = { version = "1", features = ["v4"] }
 # file: macOS Keychain, Windows Credential Manager, or Secret Service.
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 # Sign in with Linear (src/oauth.rs): SHA-256 and base64url for the PKCE
-# challenge. Both already come with rustls, so they add nothing to the build.
-ring = "0.17"
+# challenge.
+sha2 = "0.10"
 base64 = "0.23"
 # The Codex daemon's control socket speaks JSON-RPC over WebSocket (src/claude/codex.rs).
 tungstenite = "0.30"

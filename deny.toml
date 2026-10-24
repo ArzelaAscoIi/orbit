@@ -12,15 +12,12 @@ targets = ["aarch64-apple-darwin"]
 allow = [
     "MIT",
     "Apache-2.0",
-    "Apache-2.0 WITH LLVM-exception",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
+    # MIT-like, notice only: libloading (OpenGL), foldhash and zlib-rs,
+    # Unicode's data tables (unicode-normalization, idna_mapping).
     "ISC",
     "Zlib",
-    "Unlicense",
-    "0BSD",
-    "BSL-1.0",
     "Unicode-3.0",
+    # option-ext, through dirs, which wry needs on macOS.
     "MPL-2.0",
     # egui's bundled fonts.
     "OFL-1.1",

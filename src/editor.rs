@@ -68,8 +68,8 @@ pub fn save(path: &str, text: &str) -> std::io::Result<PathBuf> {
         return Err(std::io::Error::other("no path: type where to save it"));
     }
     let path = match path.strip_prefix("~/") {
-        Some(rest) => directories::BaseDirs::new()
-            .map(|d| d.home_dir().join(rest))
+        Some(rest) => crate::store::home()
+            .map(|h| h.join(rest))
             .ok_or_else(|| std::io::Error::other("no home folder"))?,
         None => PathBuf::from(path),
     };

@@ -61,7 +61,14 @@ pub fn install(profile: &Profile) -> Result<()> {
 fn config_dir() -> PathBuf {
     std::env::var_os("K9S_CONFIG_DIR")
         .map(PathBuf::from)
-        .or_else(|| directories::BaseDirs::new().map(|d| d.config_dir().join("k9s")))
+        .or_else(|| {
+            let config = if cfg!(target_os = "macos") {
+                "Library/Application Support"
+            } else {
+                ".config"
+            };
+            crate::store::home().map(|h| h.join(config).join("k9s"))
+        })
         .unwrap_or_else(|| PathBuf::from("k9s"))
 }
 

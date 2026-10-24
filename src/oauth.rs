@@ -187,7 +187,8 @@ async fn token(
 
 /// BASE64URL(SHA256(verifier)), RFC 7636.
 fn challenge(verifier: &str) -> String {
-    let hash = ring::digest::digest(&ring::digest::SHA256, verifier.as_bytes());
+    use sha2::Digest;
+    let hash = sha2::Sha256::digest(verifier.as_bytes());
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash)
 }
 

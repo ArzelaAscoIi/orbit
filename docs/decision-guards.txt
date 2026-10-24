@@ -339,3 +339,4 @@
 2026-10-23 · sessions · Orbit ends the attach terminals nobody looks at every 10 min => test:only_the_agent_view_is_picked_never_a_json_list_or_a_session; code:src/app/mod.rs:self.claude.release_viewers(&in_front);
 2026-10-21 · settings · A saved Anthropic key can be dropped for Claude Code's login => test:typing_claude_code_for_the_key_means_its_login; code:src/ui/settings.rs:"Use Claude Code's login instead"
 2026-10-24 · diff · The Diff tab colours code by language (keywords, strings, co => test:python_reads_as_keywords_strings_and_comments; code:src/github.rs:file.spans = crate::syntax::spans(file);
+2026-10-24 · licenses · Orbit ships no fonts and no copyleft code: theme.rs reads Ge => test:the_macs_fonts_cover_every_glyph_orbit_draws; code:src/theme.rs:system_fonts(&font_dirs())

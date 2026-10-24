@@ -265,61 +265,121 @@ pub fn follow(ctx: &egui::Context, choice: Choice) {
     }
 }
 
-/// Geist for text, Geist Mono for metadata. egui's own fonts stay behind
-/// them for the glyphs Geist lacks (✳ ↗ ■ ▲ ⟳), and Phosphor's icons
+/// The fonts, read from the Mac at start: none ship with Orbit, so its
+/// licences stay MIT/Apache. Geist and Geist Mono when the user has them
+/// installed, else the system's SF Pro and SF Mono (Menlo before macOS 10.15);
+/// Apple Symbols and Menlo behind them for the glyphs the text fonts lack
+/// (⌘ ✳ ⟳ ▲, the terminal's box drawing), STIX Two Math for ⏺, and Phosphor's icons
 /// (`crate::ui::widgets::icon`) for buttons.
 pub fn fonts(ctx: &egui::Context) {
-    let mut fonts = FontDefinitions::default();
-    // Phosphor icons (one family) behind the text fonts, for buttons.
+    let mut fonts = FontDefinitions::empty();
     // ponytail: egui-phosphor 0.14 is built on egui 0.36, so only its font
     // bytes are used here; back to `add_to_fonts` once it moves to 0.37.
     fonts.font_data.insert(
         "phosphor".into(),
         FontData::from_static(egui_phosphor::Variant::Regular.font_bytes()).into(),
     );
-    let text = fonts.families.entry(FontFamily::Proportional).or_default();
-    text.insert(text.len().min(1), "phosphor".into());
-    for (name, bytes) in [
-        (
-            "geist",
-            &include_bytes!("../assets/fonts/Geist-Regular.ttf")[..],
-        ),
-        (
-            "geist-medium",
-            &include_bytes!("../assets/fonts/Geist-Medium.ttf")[..],
-        ),
-        (
-            "geist-semibold",
-            &include_bytes!("../assets/fonts/Geist-SemiBold.ttf")[..],
-        ),
-        (
-            "geist-mono",
-            &include_bytes!("../assets/fonts/GeistMono-Regular.ttf")[..],
-        ),
-    ] {
-        fonts
-            .font_data
-            .insert(name.into(), FontData::from_static(bytes).into());
+    let mut found: Vec<&str> = Vec::new();
+    for (name, data) in system_fonts(&font_dirs()) {
+        fonts.font_data.insert(name.into(), data.into());
+        found.push(name);
     }
-    let fallback = fonts.families[&FontFamily::Proportional].clone();
-    let family = |first: &str| [vec![first.to_owned()], fallback.clone()].concat();
-    fonts
-        .families
-        .insert(FontFamily::Proportional, family("geist"));
-    fonts.families.insert(medium(), family("geist-medium"));
-    fonts.families.insert(semibold(), family("geist-semibold"));
-    let mono = &mut fonts.families.get_mut(&FontFamily::Monospace).unwrap();
-    mono.insert(0, "geist-mono".into());
-    mono.push("phosphor".into());
+    if !found.iter().any(|n| n.starts_with("text")) {
+        eprintln!("orbit: no system font found (Geist, SF Pro, Menlo); text may not show");
+    }
+    // Phosphor right behind the text face: Apple Symbols has glyphs at the
+    // private-use code points its icons sit on.
+    let chain = |first: &[&str]| -> Vec<String> {
+        first
+            .iter()
+            .chain(["phosphor", "symbols", "menlo", "stix"].iter())
+            .filter(|n| **n == "phosphor" || found.contains(n))
+            .map(|n| (*n).to_owned())
+            .collect()
+    };
+    let families = &mut fonts.families;
+    families.insert(FontFamily::Proportional, chain(&["text"]));
+    families.insert(medium(), chain(&["text-medium", "text"]));
+    families.insert(semibold(), chain(&["text-semibold", "text"]));
+    families.insert(FontFamily::Monospace, chain(&["mono"]));
     ctx.set_fonts(fonts);
 }
 
-/// Geist 500: titles, buttons, names.
+/// Where the Mac keeps fonts: the user's, the machine's, the system's.
+fn font_dirs() -> Vec<std::path::PathBuf> {
+    let mut dirs: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(home) = std::env::var_os("HOME") {
+        dirs.push(std::path::Path::new(&home).join("Library/Fonts"));
+    }
+    dirs.push("/Library/Fonts".into());
+    dirs.push("/System/Library/Fonts".into());
+    dirs
+}
+
+/// The faces Orbit uses, by role (`text`, `text-medium`, `text-semibold`,
+/// `mono`, `symbols`, `menlo`, `stix`), from the first of `dirs` that has each:
+/// Geist when installed, else SF Pro, its variable weight axis set to 400,
+/// 510 and 590 for the three roles.
+fn system_fonts(dirs: &[std::path::PathBuf]) -> Vec<(&'static str, FontData)> {
+    let read = |file: &str| {
+        dirs.iter()
+            .find_map(|d| std::fs::read(d.join(file)).ok())
+            .map(|b| -> egui::epaint::text::Blob { std::sync::Arc::new(b) })
+    };
+    let weight = |blob: &egui::epaint::text::Blob, wght: f32| {
+        FontData::from_blob(blob.clone(), 0).tweak(egui::epaint::text::FontTweak {
+            coords: egui::epaint::text::VariationCoords::new([(
+                egui::epaint::text::Tag::new(b"wght"),
+                wght,
+            )]),
+            ..Default::default()
+        })
+    };
+    let mut out = Vec::new();
+    let geist = [
+        ("text", "Geist-Regular.ttf"),
+        ("text-medium", "Geist-Medium.ttf"),
+        ("text-semibold", "Geist-SemiBold.ttf"),
+    ];
+    if let Some(regular) = read(geist[0].1) {
+        out.push(("text", FontData::from_blob(regular, 0)));
+        for (role, file) in &geist[1..] {
+            if let Some(blob) = read(file) {
+                out.push((*role, FontData::from_blob(blob, 0)));
+            }
+        }
+    } else if let Some(sf) = read("SFNS.ttf") {
+        out.push(("text", weight(&sf, 400.0)));
+        out.push(("text-medium", weight(&sf, 510.0)));
+        out.push(("text-semibold", weight(&sf, 590.0)));
+    }
+    let menlo = read("Menlo.ttc");
+    if let Some(mono) = read("GeistMono-Regular.ttf") {
+        out.push(("mono", FontData::from_blob(mono, 0)));
+    } else if let Some(mono) = read("SFNSMono.ttf") {
+        out.push(("mono", weight(&mono, 400.0)));
+    } else if let Some(menlo) = &menlo {
+        out.push(("mono", FontData::from_blob(menlo.clone(), 0)));
+    }
+    if let Some(symbols) = read("Apple Symbols.ttf") {
+        out.push(("symbols", FontData::from_blob(symbols, 0)));
+    }
+    if let Some(menlo) = menlo {
+        out.push(("menlo", FontData::from_blob(menlo, 0)));
+    }
+    // ⏺, which Claude Code starts its lines with: no other text face has it.
+    if let Some(stix) = read("Supplemental/STIXTwoMath.otf") {
+        out.push(("stix", FontData::from_blob(stix, 0)));
+    }
+    out
+}
+
+/// Medium (500): titles, buttons, names.
 pub fn medium() -> FontFamily {
     FontFamily::Name("medium".into())
 }
 
-/// Geist 600: headings.
+/// Semibold (600): headings.
 pub fn semibold() -> FontFamily {
     FontFamily::Name("semibold".into())
 }
@@ -632,5 +692,33 @@ mod tests {
         assert_eq!(serde_json::to_string(&Choice::Paper).unwrap(), "\"paper\"");
         let back: Choice = serde_json::from_str("\"graphite\"").unwrap();
         assert_eq!(back, Choice::Graphite);
+    }
+}
+
+#[cfg(test)]
+mod font_tests {
+    /// Every non-ASCII glyph Orbit's strings use, and what Claude Code's
+    /// terminal draws, has a face on a Mac (skipped where there is none).
+    #[test]
+    fn the_macs_fonts_cover_every_glyph_orbit_draws() {
+        if !std::path::Path::new("/System/Library/Fonts/SFNS.ttf").exists() {
+            return;
+        }
+        let ctx = egui::Context::default();
+        super::fonts(&ctx);
+        let _ = ctx.run_ui(Default::default(), |_| {});
+        let ui = "«·»ÄÖ×äü–—“”•…›←↑→↓↗↩⇧−⌃⌘⌥⏎─■▲▸▼▾●◐◧⚙⚠✓✗✳✻❯⟳⠋⠙";
+        let terminal = "⏺⎿╭╮╰╯│─┌┐└┘├┤✽✶✢✻·▐▛▜▝▘█░▒▓";
+        for (family, text) in [
+            (egui::FontFamily::Proportional, ui),
+            (super::medium(), ui),
+            (egui::FontFamily::Monospace, ui),
+            (egui::FontFamily::Monospace, terminal),
+        ] {
+            let id = egui::FontId::new(13.0, family.clone());
+            let missing: String =
+                ctx.fonts_mut(|f| text.chars().filter(|c| !f.has_glyph(&id, *c)).collect());
+            assert!(missing.is_empty(), "{family:?} lacks {missing}");
+        }
     }
 }

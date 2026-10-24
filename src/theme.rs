@@ -459,6 +459,25 @@ fn style(ctx: &egui::Context, p: &Palette) {
     ctx.set_style_of(egui::Theme::Dark, style);
 }
 
+/// A diff token's colour, read on `on` (the line's background). One set
+/// for dark themes, one for light, then moved until it reads (4.5:1).
+pub fn syntax(kind: crate::syntax::Kind, on: Color32) -> Color32 {
+    use crate::syntax::Kind;
+    let p = p();
+    let color = match (kind, p.dark) {
+        (Kind::Comment, _) => p.text_3,
+        (Kind::Keyword, true) => hex(0xc792ea),
+        (Kind::String, true) => hex(0xc3e88d),
+        (Kind::Number, true) => hex(0xf78c6c),
+        (Kind::Name, true) => hex(0x82aaff),
+        (Kind::Keyword, false) => hex(0x8a3fb0),
+        (Kind::String, false) => hex(0x3b7d23),
+        (Kind::Number, false) => hex(0xa0521d),
+        (Kind::Name, false) => hex(0x2f5fc4),
+    };
+    readable(color, on)
+}
+
 /// `fg` moved toward black or white, away from `bg`, until it reads on `bg` (4.5:1, as body text):
 /// a terminal program picks its colours for a dark background, and on
 /// Paper its greys would vanish.

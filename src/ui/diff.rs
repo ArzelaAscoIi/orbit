@@ -466,11 +466,22 @@ fn cell(cx: &Cx, n: usize, width: Option<(f32, bool)>, ui: &mut Ui) {
         Line::Removed(t) => ("−", t, p().text, wash(p().danger)),
         Line::Context(t) => (" ", t, p().text_2, Color32::TRANSPARENT),
     };
+    // What the code's colours have to read on (a wash sits over bg).
+    let on = if matches!(line, Line::Added(_)) {
+        p().diff_bg
+    } else {
+        p().bg
+    };
     // A step marks its lines and dims the rest of the file.
     let focus = cx.step.map(|s| s.spans.iter().any(|x| at(x, cx.file, n)));
     let (color, fill) = match focus {
         Some(false) => (p().text_3, fill.gamma_multiply(0.4)),
         _ => (color, fill),
+    };
+    // Dimmed lines stay grey: the step's lines are the ones to read.
+    let spans = match focus {
+        Some(false) => &[][..],
+        _ => cx.file.spans.get(n - 1).map_or(&[][..], Vec::as_slice),
     };
     let snippet = cx
         .suggestions
@@ -499,7 +510,7 @@ fn cell(cx: &Cx, n: usize, width: Option<(f32, bool)>, ui: &mut Ui) {
                         .color(p().text_3);
                     ui.label(gutter);
                 }
-                let job = code(&format!("{sign} {text}"), color, snippet);
+                let job = code(sign, text, color, snippet, spans, on);
                 ui.add(egui::Label::new(job).wrap());
             });
         });
@@ -1537,30 +1548,93 @@ fn first_focus(ui: &Ui, step: Option<&Step>, file: &File, n: usize) -> bool {
     true
 }
 
-/// A diff line in mono, with the characters a note is about washed.
-fn code(text: &str, color: Color32, snippet: Option<&str>) -> egui::text::LayoutJob {
+/// A diff line in mono after its sign: the code in its syntax colours
+/// (read on `on`), the characters a note is about washed.
+fn code(
+    sign: &str,
+    text: &str,
+    color: Color32,
+    snippet: Option<&str>,
+    spans: &[crate::syntax::Span],
+    on: Color32,
+) -> egui::text::LayoutJob {
     let font = egui::FontId::monospace(12.0);
     let plain = egui::TextFormat::simple(font.clone(), color);
     let mut job = egui::text::LayoutJob::default();
-    match snippet.and_then(|s| text.find(s).map(|at| (at, at + s.len()))) {
-        Some((from, to)) => {
-            job.append(&text[..from], 0.0, plain.clone());
-            let mark = egui::TextFormat {
-                background: wash(p().signal).gamma_multiply(2.5),
-                color: p().text,
-                underline: Stroke::new(1.0, p().signal),
-                ..plain.clone()
-            };
-            job.append(&text[from..to], 0.0, mark);
-            job.append(&text[to..], 0.0, plain);
+    job.append(&format!("{sign} "), 0.0, plain.clone());
+    let marked = snippet.and_then(|s| text.find(s).map(|at| at..at + s.len()));
+    for (range, kind, mark) in runs(text, spans, marked) {
+        let mut format = egui::TextFormat {
+            color: kind.map_or(color, |k| crate::theme::syntax(k, on)),
+            ..plain.clone()
+        };
+        if mark {
+            format.background = wash(p().signal).gamma_multiply(2.5);
+            format.underline = Stroke::new(1.0, p().signal);
         }
-        None => job.append(text, 0.0, plain),
+        job.append(&text[range], 0.0, format);
     }
     job
 }
 
+/// `text` cut where a syntax span or the marked snippet starts or ends:
+/// each piece with its kind (none: the line's own colour) and whether it is
+/// marked.
+fn runs(
+    text: &str,
+    spans: &[crate::syntax::Span],
+    marked: Option<std::ops::Range<usize>>,
+) -> Vec<(std::ops::Range<usize>, Option<crate::syntax::Kind>, bool)> {
+    let mut cuts: Vec<usize> = vec![0, text.len()];
+    for (range, _) in spans {
+        cuts.extend([range.start, range.end]);
+    }
+    if let Some(m) = &marked {
+        cuts.extend([m.start, m.end]);
+    }
+    cuts.retain(|&c| c <= text.len() && text.is_char_boundary(c));
+    cuts.sort_unstable();
+    cuts.dedup();
+    cuts.windows(2)
+        .map(|w| {
+            let (from, to) = (w[0], w[1]);
+            let kind = spans
+                .iter()
+                .find(|(r, _)| r.start <= from && to <= r.end)
+                .map(|(_, k)| *k);
+            let mark = marked
+                .as_ref()
+                .is_some_and(|m| m.start <= from && to <= m.end);
+            (from..to, kind, mark)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_line_cuts_where_its_colours_and_its_note_change() {
+        use crate::syntax::Kind;
+        let text = "def f(): pass";
+        let spans = vec![(0..3, Kind::Keyword), (4..5, Kind::Name)];
+        let runs = runs(text, &spans, Some(2..6));
+        let pieces: Vec<(&str, Option<Kind>, bool)> = runs
+            .iter()
+            .map(|(r, k, m)| (&text[r.clone()], *k, *m))
+            .collect();
+        assert_eq!(
+            pieces,
+            vec![
+                ("de", Some(Kind::Keyword), false),
+                ("f", Some(Kind::Keyword), true),
+                (" ", None, true),
+                ("f", Some(Kind::Name), true),
+                ("(", None, true),
+                ("): pass", None, false),
+            ]
+        );
+    }
+
     #[test]
     fn request_changes_is_not_offered_on_your_own_pr() {
         assert_eq!(super::review_choices(true), (true, false));
@@ -1576,6 +1650,7 @@ mod tests {
             added: 0,
             removed: 0,
             lines,
+            spans: Vec::new(),
         };
         assert!(one_sided(&file(vec![
             Line::Hunk("@@".into()),
@@ -1595,6 +1670,7 @@ mod tests {
             added: 1,
             removed: 0,
             lines: vec![Line::Added(line.into())],
+            spans: Vec::new(),
         };
         let url = "https://github.com/o/r/pull/1";
         assert_eq!(viewed_key(url, &file("x")), viewed_key(url, &file("x")));
@@ -1684,6 +1760,7 @@ mod tests {
             added: 0,
             removed: 0,
             lines: Vec::new(),
+            spans: Vec::new(),
         };
         let span = Span {
             path: "utils/parser.py".into(),
@@ -1707,6 +1784,7 @@ mod tests {
                 Line::Added("def f(m):".into()),
                 Line::Added("    m.return_value = 1".into()),
             ],
+            spans: Vec::new(),
         };
         let think = |from: usize, snippet: &str| Think {
             at: Span {

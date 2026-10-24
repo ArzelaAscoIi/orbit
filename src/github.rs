@@ -19,6 +19,8 @@ pub struct File {
     pub added: usize,
     pub removed: usize,
     pub lines: Vec<Line>,
+    /// Each line's syntax colours (syntax::spans), filled when it loads.
+    pub spans: Vec<Vec<crate::syntax::Span>>,
 }
 
 /// The unified diff of a pull request.
@@ -86,7 +88,8 @@ async fn raw(
             .await??
         }
     };
-    Ok(parse(&text))
+    // parse colours the code: off the async workers.
+    Ok(tokio::task::spawn_blocking(move || parse(&text)).await?)
 }
 
 /// Whether a PR may be merged right now, asked live, and what GitHub says
@@ -1543,7 +1546,7 @@ fn render(files: &[File], limit: usize, numbered: bool) -> String {
     out
 }
 
-/// Splits a unified diff into files and classified lines.
+/// Splits a unified diff into files and classified, coloured lines.
 pub fn parse(text: &str) -> Vec<File> {
     let mut files: Vec<File> = Vec::new();
     for line in text.lines() {
@@ -1554,6 +1557,7 @@ pub fn parse(text: &str) -> Vec<File> {
                 added: 0,
                 removed: 0,
                 lines: Vec::new(),
+                spans: Vec::new(),
             });
             continue;
         }
@@ -1578,6 +1582,10 @@ pub fn parse(text: &str) -> Vec<File> {
             Line::Context(line.strip_prefix(' ').unwrap_or(line).to_owned())
         };
         file.lines.push(parsed);
+    }
+    // Syntax colours once, as it loads, never per frame.
+    for file in &mut files {
+        file.spans = crate::syntax::spans(file);
     }
     files
 }
@@ -1803,6 +1811,7 @@ mod tests {
                 Line::Added("c".into()),
                 Line::Context("d".into()),
             ],
+            spans: Vec::new(),
         };
         assert_eq!(numbers_at(&file, 2), Some((Some(10), Some(10))));
         assert_eq!(numbers_at(&file, 3), Some((None, Some(11))));

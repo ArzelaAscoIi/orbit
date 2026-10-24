@@ -1530,11 +1530,7 @@ impl App {
             }
             Action::Attach(key) if self.card(&key).is_none() => match self.spec_for(&key) {
                 Some(spec) => self.claude.open(spec, ctx),
-                None => {
-                    self.error = Some(
-                        "That ticket is not on the board any more (done over 14 days ago).".into(),
-                    )
-                }
+                None => self.error = Some(NOT_ON_BOARD.into()),
             },
             Action::Attach(key) => match self.card(&key) {
                 Some(card) => {
@@ -1542,11 +1538,7 @@ impl App {
                     let spec = claude::ticket(card, &self.viewer, self.skill_files(), Some(first));
                     self.claude.open(spec, ctx);
                 }
-                None => {
-                    self.error = Some(
-                        "That ticket is not on the board any more (done over 14 days ago).".into(),
-                    )
-                }
+                None => self.error = Some(NOT_ON_BOARD.into()),
             },
             // A shell splits into another shell, as in a terminal.
             Action::Split { across }
@@ -1664,10 +1656,13 @@ impl App {
                 self.start_onboarding();
             }
             Action::Reveal(path) => {
-                let _ = std::process::Command::new("open")
-                    .arg("-R")
-                    .arg(path)
-                    .spawn();
+                // Waited for off the UI thread: no zombie left behind.
+                std::thread::spawn(move || {
+                    let _ = std::process::Command::new("open")
+                        .arg("-R")
+                        .arg(path)
+                        .output();
+                });
             }
             Action::SetActivityLog(on) => self.save_settings(|s| s.activity_log = Some(on)),
             Action::ClearProfile => self.use_profile(
@@ -1866,8 +1861,12 @@ impl App {
             }
             Action::NewWindow => {
                 let (program, args) = launcher(&std::env::current_exe().unwrap_or_default());
-                if let Err(error) = std::process::Command::new(&program).args(&args).spawn() {
-                    self.error = Some(format!("Could not open a new window: {error}"));
+                match std::process::Command::new(&program).args(&args).spawn() {
+                    // Reaped when it exits, so it never lingers as a zombie.
+                    Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
+                    Err(error) => {
+                        self.error = Some(format!("Could not open a new window: {error}"))
+                    }
                 }
             }
             Action::Debug(name) => {
@@ -3650,6 +3649,11 @@ impl App {
 }
 
 const WINDOWS: &str = "windows.json";
+
+/// The board holds your teams' newest 100 open tickets and those done in
+/// the last 14 days; anything else is not in it, for whichever reason.
+const NOT_ON_BOARD: &str = "That ticket is not on the board: done or canceled a while ago, \
+     another team's, or older than its newest 100.";
 
 /// What Land approved does with one approved PR: the button counts the
 /// ones it acts on (`acts`), the click does exactly those.

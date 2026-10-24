@@ -86,6 +86,7 @@ mod skills;
 mod stats;
 mod store;
 mod story;
+mod syntax;
 mod testplan;
 mod theme;
 mod today;

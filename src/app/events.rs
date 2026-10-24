@@ -630,6 +630,10 @@ impl App {
             match &result {
                 Ok(_) => {
                     self.verified = true;
+                    // Signed in: the Linear-less start is over.
+                    if self.settings.no_linear {
+                        self.save_settings(|s| s.no_linear = false);
+                    }
                     if let Some(key) = self.pending_key.take()
                         && let Err(error) = secrets::set(Secret::Linear, &key)
                     {

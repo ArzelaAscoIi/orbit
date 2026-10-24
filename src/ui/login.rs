@@ -48,6 +48,19 @@ pub(super) fn sign_in(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                         );
                     }
                     ui.add_space(8.0);
+                    // Linear is optional: sessions, shells and GitHub PRs
+                    // work without it, tickets do not.
+                    if !waiting
+                        && link(ui, label("Continue without Linear"))
+                            .on_hover_text(
+                                "Claude sessions, shells and GitHub PRs work without it; \
+                                 tickets need Linear. Connect it later in Settings.",
+                            )
+                            .clicked()
+                    {
+                        actions.push(Action::ContinueWithoutLinear);
+                    }
+                    ui.add_space(8.0);
                     ui.label(
                         RichText::new("Saved in your Keychain, so you only do this once.")
                             .small()

@@ -289,6 +289,11 @@ impl Client {
         }
     }
 
+    /// Whether a key was given: Orbit runs without Linear on an empty one.
+    fn connected(&self) -> bool {
+        !matches!(&self.auth, Auth::Header(header) if header == "Bearer ")
+    }
+
     /// The header for the next request, refreshing a stale OAuth token first
     /// and saving the new one where the old one was.
     async fn authorization(&self) -> Result<String> {
@@ -627,6 +632,10 @@ impl Client {
 
     /// The user's latest notifications, raw, for `inbox::from_linear`.
     pub async fn notifications(&self) -> Result<Vec<Value>> {
+        // Without Linear (no key) the inbox is GitHub's alone.
+        if !self.connected() {
+            return Ok(Vec::new());
+        }
         let query = "{ notifications(first: 50) { nodes {
             id type title subtitle url readAt archivedAt snoozedUntilAt unsnoozedAt updatedAt
             ... on IssueNotification { issue { id } }

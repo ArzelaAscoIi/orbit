@@ -320,7 +320,7 @@ fn connections(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     let rows: [Connection; 4] = [
         (
             "Linear",
-            Some(linear),
+            (!app.no_linear()).then_some(linear),
             "the board, tickets, comments",
             "sign in",
             None,
@@ -392,6 +392,9 @@ fn connections(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                         }
                     } else if connected.is_none() {
                         ui.label(label(&format!("connect: {how}")));
+                        if name == "Linear" && hover_hand(&ui.button("Connect Linear")).clicked() {
+                            actions.push(Action::ConnectLinear);
+                        }
                     }
                 });
             }

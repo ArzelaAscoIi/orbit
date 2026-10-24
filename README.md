@@ -156,7 +156,8 @@ xattr -dr com.apple.quarantine /Applications/Orbit.app   # not notarized yet
 ```
 
 Open it, click **Sign in with Linear** and pick your teams. Then press Cmd+K and choose
-**Start the tutorial** for a two-minute tour of every feature.
+**Start the tutorial** for a two-minute tour of every feature. No Linear? **Continue without
+Linear** keeps Claude sessions, shells and GitHub PRs; tickets need it.
 
 Needs [Claude Code](https://claude.com/claude-code), [Codex](https://developers.openai.com/codex) or [pi](https://pi.dev),
 `gh auth login`, and Apple silicon. An Anthropic key (Settings) turns on

@@ -549,6 +549,33 @@ pub enum Event {
     },
 }
 
+impl Command {
+    /// Asks Linear: dropped while Orbit runs without it (App::send).
+    /// Inbox asks GitHub too, and the Linear client answers it empty.
+    pub fn needs_linear(&self) -> bool {
+        matches!(
+            self,
+            Command::Refresh { .. }
+                | Command::SetState { .. }
+                | Command::TakeFromBot { .. }
+                | Command::MoveTeam { .. }
+                | Command::AddComment { .. }
+                | Command::SaveNotes(_)
+                | Command::TestPlan { .. }
+                | Command::File { .. }
+                | Command::Issue { .. }
+                | Command::Write { .. }
+                | Command::Lookup { .. }
+                | Command::Dispatch { .. }
+                | Command::PrTicket { .. }
+                | Command::Search { .. }
+                | Command::ReadNote { .. }
+                | Command::AddReport { .. }
+                | Command::CreateTicket { .. }
+        )
+    }
+}
+
 pub struct Backend {
     commands: mpsc::UnboundedSender<Command>,
     events: std::sync::mpsc::Receiver<Event>,
@@ -1323,4 +1350,23 @@ async fn test_plan(
         .add_comment(issue_id, &testplan::to_comment(&plan, issue_id))
         .await?;
     Ok((plan, true))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Command;
+
+    #[test]
+    fn without_linear_only_linear_commands_are_dropped() {
+        let refresh = Command::Refresh {
+            request: 1,
+            teams: Vec::new(),
+        };
+        assert!(refresh.needs_linear());
+        assert!(Command::SaveNotes(Vec::new()).needs_linear());
+        // GitHub's, and the inbox (its Linear half answers empty).
+        assert!(!Command::MyPrs.needs_linear());
+        assert!(!Command::Inbox.needs_linear());
+        assert!(!Command::Gate { url: "u".into() }.needs_linear());
+    }
 }

@@ -331,6 +331,7 @@ impl App {
             "ticket": view.selected.as_deref().and_then(|id| self.card(id)).map(|c| self.card_json(c, false)),
             "session": view.session,
             "signedIn": !self.viewer.is_empty(),
+            "linear": !self.no_linear(),
             "loadedAt": self.loaded_at,
             "error": self.error,
             "forYou": self.for_you().len(),

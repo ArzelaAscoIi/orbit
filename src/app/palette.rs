@@ -314,9 +314,16 @@ pub fn items(app: &App) -> Vec<Item> {
                 vec![Action::Update],
             )
         },
-        Item {
-            also: "log out forget key",
-            ..item("actions", "Sign out", "", vec![Action::SignOut])
+        if app.no_linear() {
+            Item {
+                also: "linear sign in log in tickets",
+                ..item("actions", "Connect Linear", "", vec![Action::ConnectLinear])
+            }
+        } else {
+            Item {
+                also: "log out forget key",
+                ..item("actions", "Sign out", "", vec![Action::SignOut])
+            }
         },
         Item {
             also: "reload sync",

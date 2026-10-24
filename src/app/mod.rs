@@ -61,6 +61,10 @@ pub enum Action {
     SignInWithLinear,
     /// Forgets the stored key and returns to the login screen.
     SignOut,
+    /// Skips Linear: Orbit runs with sessions, shells and GitHub PRs only.
+    ContinueWithoutLinear,
+    /// Leaves the Linear-less mode for the sign-in screen.
+    ConnectLinear,
     /// Saves the key typed into its connection row in Settings and starts
     /// using it.
     SaveKey(crate::secrets::Secret),
@@ -561,6 +565,16 @@ pub enum View {
     /// One repository's page: its open PRs, who waits on whom, each
     /// opening here as a PR card (github.rs `repo_prs`).
     Repo(String),
+}
+
+impl View {
+    /// Lists Linear's tickets: without Linear it says how to connect it.
+    pub fn needs_linear(&self) -> bool {
+        matches!(
+            self,
+            View::ForYou | View::Intake | View::Customers | View::Customer(_) | View::Ktlo
+        )
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -1319,13 +1333,20 @@ impl App {
             app.key_input = key;
             app.apply(Action::SignIn, ctx);
             app.pending_key = None;
+        } else if app.settings.no_linear {
+            app.apply(Action::ContinueWithoutLinear, ctx);
         }
         app.log("start", crate::VERSION, "", None);
         app
     }
 
     pub fn signed_in(&self) -> bool {
-        self.verified
+        self.verified || self.no_linear()
+    }
+
+    /// Running without Linear: no tickets, Linear never asked.
+    pub fn no_linear(&self) -> bool {
+        self.settings.no_linear && !self.verified
     }
 
     /// The browser sign-in is open; its tokens then sign in like a key.
@@ -1349,7 +1370,7 @@ impl App {
 
     /// A key is being checked against Linear.
     pub fn checking(&self) -> bool {
-        self.backend.is_some() && !self.verified
+        self.backend.is_some() && !self.verified && !self.no_linear()
     }
 
     pub fn has_anthropic_key(&self) -> bool {
@@ -1427,6 +1448,9 @@ impl App {
     }
 
     fn send(&self, command: Command) {
+        if self.no_linear() && command.needs_linear() {
+            return;
+        }
         if let Some(backend) = &self.backend {
             backend.send(command);
         }
@@ -2083,7 +2107,7 @@ impl App {
     }
 
     fn keep_fresh(&mut self, ctx: &egui::Context) {
-        if !self.verified || self.loading || self.picking.is_some() {
+        if !self.signed_in() || self.loading || self.picking.is_some() {
             return;
         }
         let reported = self.claude.status_version != self.status_seen;
@@ -3253,5 +3277,37 @@ mod skills_seen_tests {
         let seen: Vec<String> = ["build"].map(String::from).into();
         assert_eq!(super::unseen(&known, Some(&seen)), ["spot", "acme-deploy"]);
         assert!(super::unseen(&known, Some(&known)).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod no_linear_tests {
+    use super::View;
+
+    #[test]
+    fn ticket_views_need_linear_and_the_rest_do_not() {
+        for view in [View::ForYou, View::Intake, View::Customers, View::Ktlo] {
+            assert!(view.needs_linear(), "{view:?}");
+        }
+        for view in [
+            View::Sessions,
+            View::Repos,
+            View::Inbox,
+            View::Alerts,
+            View::Settings,
+        ] {
+            assert!(!view.needs_linear(), "{view:?}");
+        }
+    }
+
+    #[test]
+    fn running_without_linear_is_remembered_in_settings() {
+        let settings: crate::store::Settings =
+            serde_json::from_str(r#"{"noLinear": true}"#).unwrap();
+        assert!(settings.no_linear);
+        let text = serde_json::to_string(&settings).unwrap();
+        assert!(text.contains(r#""noLinear":true"#), "{text}");
+        let fresh: crate::store::Settings = serde_json::from_str("{}").unwrap();
+        assert!(!fresh.no_linear);
     }
 }

@@ -201,6 +201,8 @@ pub const GATES: &[(&str, Gate)] = &[
     ("SignIn", Gate::App),
     ("SignInWithLinear", Gate::App),
     ("SignOut", Gate::App),
+    ("ContinueWithoutLinear", Gate::App),
+    ("ConnectLinear", Gate::App),
     ("SaveKey", Gate::App),
     ("UseClaudeCode", Gate::App),
     ("PickTeams", Gate::App),

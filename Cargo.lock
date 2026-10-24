@@ -1554,7 +1554,6 @@ dependencies = [
  "bytemuck",
  "ecolor 0.37.0",
  "emath 0.37.0",
- "epaint_default_fonts",
  "font-types",
  "harfrust",
  "log",
@@ -1569,12 +1568,6 @@ dependencies = [
  "unicode-segmentation",
  "vello_cpu 0.2.0",
 ]
-
-[[package]]
-name = "epaint_default_fonts"
-version = "0.37.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfc1cc505827f4c23eedc297975a0fd038268d41293f389dd8ff3b574aefab19"
 
 [[package]]
 name = "equivalent"
@@ -3512,8 +3505,6 @@ dependencies = [
 [[package]]
 name = "option-ext"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orbclient"

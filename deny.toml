@@ -1,7 +1,8 @@
 # `cargo deny check licenses` (make licenses, CI's "licenses" job): every
-# dependency's license must be on this list. All permissive, except
-# MPL-2.0, which is copyleft per file only: fine while those files are
-# used unmodified. A GPL-only (or any unlisted) license fails the check.
+# dependency's license must be on this list. All permissive, notice only:
+# no copyleft (option-ext, MPL-2.0, is replaced by vendor/option-ext) and
+# no bundled fonts (theme.rs reads them from the Mac). A GPL-only (or any
+# unlisted) license fails the check.
 # Vulnerabilities stay with `cargo audit` (ci.yml).
 
 [graph]
@@ -17,11 +18,6 @@ allow = [
     "ISC",
     "Zlib",
     "Unicode-3.0",
-    # option-ext, through dirs, which wry needs on macOS.
-    "MPL-2.0",
-    # egui's bundled fonts.
-    "OFL-1.1",
-    "Ubuntu-font-1.0",
 ]
 
 [licenses.private]

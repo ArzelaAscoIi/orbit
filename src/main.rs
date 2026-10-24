@@ -235,7 +235,13 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title(NAME)
-            .with_inner_size(size),
+            .with_inner_size(size)
+            // Orbit's own icon in the Dock, not eframe's default
+            // (assets/icon, scripts/icon.sh).
+            .with_icon(
+                eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon/icon-256.png"))
+                    .expect("assets/icon/icon-256.png is a PNG"),
+            ),
         ..Default::default()
     };
     eframe::run_native(

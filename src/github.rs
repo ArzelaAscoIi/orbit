@@ -535,7 +535,7 @@ pub enum Merged {
 /// `gh pr view --json` has no merge-queue field, so the gate asks GraphQL.
 const GATE: &str = "query($owner: String!, $repo: String!, $number: Int!) { \
     repository(owner: $owner, name: $repo) { pullRequest(number: $number) { \
-    id title body headRefName baseRefName state isDraft mergeStateStatus headRefOid \
+    id title body headRefName baseRefName baseRepository { defaultBranchRef { name } } state isDraft mergeStateStatus headRefOid \
     isInMergeQueue reviewDecision \
     isMergeQueueEnabled viewerDidAuthor viewerLatestReview { state commit { oid } } \
     autoMergeRequest { enabledAt } viewerCanEnableAutoMerge author { login __typename } \
@@ -757,6 +757,8 @@ fn gate_from(json: &str) -> Result<Gate> {
         #[serde(default)]
         viewer_can_enable_auto_merge: bool,
         #[serde(default)]
+        base_repository: serde_json::Value,
+        #[serde(default)]
         author: serde_json::Value,
         #[serde(default)]
         title: String,
@@ -820,6 +822,13 @@ fn gate_from(json: &str) -> Result<Gate> {
         && v.review_decision.as_deref() == Some("REVIEW_REQUIRED")
         && !approved_here;
     let auto_merge = !v.auto_merge_request.is_null();
+    // A stacked PR: its base is another PR's branch, not the default one.
+    // GitHub has no auto-merge and no merge queue for it.
+    let stacked = v
+        .base_repository
+        .pointer("/defaultBranchRef/name")
+        .and_then(|n| n.as_str())
+        .is_some_and(|default| default != v.base_ref_name);
     let author = format!("@{}", v.author["login"].as_str().unwrap_or_default());
     let names = |list: &serde_json::Value, key: &str| -> Vec<String> {
         list["nodes"]
@@ -843,7 +852,8 @@ fn gate_from(json: &str) -> Result<Gate> {
         auto_merge,
         can_auto_merge: why == "checks still running"
             && !auto_merge
-            && v.viewer_can_enable_auto_merge,
+            && v.viewer_can_enable_auto_merge
+            && !stacked,
         reviewed_at: v.reviews["nodes"]
             .as_array()
             .into_iter()
@@ -869,7 +879,7 @@ fn gate_from(json: &str) -> Result<Gate> {
             .unwrap_or_default()
             .to_owned(),
         branch: v.merge_state_status.clone(),
-        merge_queue: v.is_merge_queue_enabled,
+        merge_queue: v.is_merge_queue_enabled && !stacked,
         can_approve,
         head: v.head_ref_oid,
         green: why.is_empty(),
@@ -1462,7 +1472,14 @@ pub fn auto_merge(url: &str, head: Option<&str>) -> Result<Gate> {
                 bail!("the PR got new commits; look again first");
             }
             if !now.can_auto_merge {
-                bail!("not for merge when ready: {}", now.why);
+                bail!(
+                    "not for merge when ready: {}",
+                    match now.why.as_str() {
+                        "" => "it can be merged now",
+                        "checks still running" => "GitHub does not allow it here (a stacked PR?)",
+                        why => why,
+                    }
+                );
             }
             // A queue picks its own method.
             query = if now.merge_queue {
@@ -1917,6 +1934,21 @@ mod tests {
         assert!(!moved_past("abc", &on));
         assert!(moved_past("old", &on));
         assert!(!moved_past("old", &waiting));
+        // A stacked PR (base is not the default branch): GitHub refuses.
+        let stacked = json("null", true).replace(
+            r#""id":"PR_1""#,
+            r#""id":"PR_1","baseRefName":"feature","baseRepository":{"defaultBranchRef":{"name":"main"}}"#,
+        );
+        let stacked = stacked.replace(
+            r#""isDraft":false"#,
+            r#""isDraft":false,"isMergeQueueEnabled":true"#,
+        );
+        let gate = gate_from(&stacked).unwrap();
+        // Neither auto-merge nor the queue: gh would ask for auto-merge.
+        assert!(!gate.can_auto_merge && !gate.merge_queue);
+        let on_main = stacked.replace(r#""baseRefName":"feature""#, r#""baseRefName":"main""#);
+        let gate = gate_from(&on_main).unwrap();
+        assert!(gate.can_auto_merge && gate.merge_queue);
     }
 
     #[test]

@@ -1840,6 +1840,9 @@ impl App {
     /// it from later (2026-10-22: Cmd+J pressed 10 times, the panel hidden).
     fn note_repeat(&mut self, action: &Action) {
         let name = crate::activity::name(action);
+        if !repeat_counts(&name) {
+            return;
+        }
         let now = crate::activity::now_ms() as u64;
         let (run, flag) = repeat_run(&self.repeat, &name, now);
         self.repeat = run;
@@ -3169,6 +3172,16 @@ fn unseen(known: &[String], seen: Option<&[String]>) -> Vec<String> {
 const REPEATS: u32 = 4;
 const REPEAT_MS: u64 = 5_000;
 
+/// Whether repeats of this action can mean "it did nothing": not a
+/// divider being dragged, an image loading, or stepping through windows,
+/// toasts or the sheet, where many in a row is the point.
+fn repeat_counts(name: &str) -> bool {
+    !matches!(
+        name,
+        "PaneRatio" | "LoadImage" | "GoWindow" | "CyclePane" | "SheetAt" | "DismissToast" | "Tab"
+    )
+}
+
 /// The run of repeats after `name` at `now`, and whether it just reached
 /// `REPEATS`. ponytail: any action counts; moving through a list with j/k
 /// can trip it too, a harmless line in errors.log.
@@ -3197,6 +3210,13 @@ fn note_error(dir: &std::path::Path, error: &str) {
 
 #[cfg(test)]
 mod skills_seen_tests {
+    #[test]
+    fn dragging_or_stepping_is_not_a_repeat_worth_noting() {
+        assert!(!super::repeat_counts("PaneRatio"));
+        assert!(!super::repeat_counts("GoWindow"));
+        assert!(super::repeat_counts("ToggleChat"));
+    }
+
     #[test]
     fn the_same_action_four_times_in_five_seconds_is_noted_once() {
         let mut run = (String::new(), 0, 0);

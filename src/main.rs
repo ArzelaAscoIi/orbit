@@ -43,6 +43,19 @@ pub fn version() -> String {
     format!("v{VERSION} · {}", COMMIT.unwrap_or("dev"))
 }
 
+/// An HTTP client that gives up on a dead connection instead of waiting
+/// forever (a laptop switching networks left the board unsynced): it
+/// bounds connecting and each read, never a whole stream.
+pub fn http() -> reqwest::Client {
+    http_builder().build().unwrap_or_default()
+}
+
+pub fn http_builder() -> reqwest::ClientBuilder {
+    reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .read_timeout(std::time::Duration::from_secs(90))
+}
+
 /// The URL of the one attachment the app keeps per Linear ticket. Linear
 /// treats an attachment URL as its key on an issue, so there is never more
 /// than one. A team keeps its own (the profile's `linear.noteUrl`), so

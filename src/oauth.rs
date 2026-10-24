@@ -122,13 +122,7 @@ fn run(ctx: &egui::Context) -> Result<Tokens> {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
-        .block_on(token(
-            &reqwest::Client::new(),
-            TOKEN_URL,
-            &form,
-            "",
-            &client,
-        ))
+        .block_on(token(&crate::http(), TOKEN_URL, &form, "", &client))
 }
 
 /// A new access token for `tokens`. Linear may rotate the refresh token;

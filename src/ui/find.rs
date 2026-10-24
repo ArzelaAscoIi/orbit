@@ -19,6 +19,11 @@ pub(super) fn jump(app: &mut App, ui: &Ui) {
     }
 }
 
+/// The find field's id: the window's keys ask whether it has them.
+pub(super) fn field_id() -> egui::Id {
+    egui::Id::unique("find-field")
+}
+
 pub(super) fn show(app: &mut App, ui: &mut Ui) {
     let Some(find) = app.find.as_mut() else {
         return;
@@ -37,6 +42,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui) {
                     ui.horizontal(|ui| {
                         let field = ui.add(
                             egui::TextEdit::singleline(&mut find.query)
+                                .id(field_id())
                                 .hint_text("find on screen")
                                 .desired_width(220.0),
                         );
@@ -64,6 +70,10 @@ pub(super) fn show(app: &mut App, ui: &mut Ui) {
                             n => format!("{} of {n}", find.current.min(n - 1) + 1),
                         };
                         ui.label(label(&count).color(p().text_2));
+                        ui.add_space(6.0);
+                        if link(ui, label("×")).on_hover_text("Close (Esc)").clicked() {
+                            escape = true;
+                        }
                     })
                     .response
                 })

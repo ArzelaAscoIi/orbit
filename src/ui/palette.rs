@@ -179,7 +179,7 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     state.selected = state.selected.min(last);
     let mut run = None;
 
-    egui::Area::new(egui::Id::unique("palette"))
+    let area = egui::Area::new(egui::Id::unique("palette"))
         .order(egui::Order::Foreground)
         .anchor(Align2::CENTER_TOP, egui::vec2(0.0, 70.0))
         .show(&ctx, |ui| {
@@ -296,7 +296,9 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
                     Frame::new()
                         .inner_margin(Margin::symmetric(PAD, 6))
                         .show(ui, |ui| {
-                            ui.label(label("↑↓ move · enter run · esc close · ⌘K anywhere"));
+                            ui.label(label(
+                                "↑↓ move · enter run · esc or click outside: close · ⌘K anywhere",
+                            ));
                         });
                 });
         });
@@ -304,12 +306,22 @@ pub(super) fn show(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
     if enter && !results.is_empty() {
         run = Some(state.selected);
     }
+    // A click outside closes it, as Esc does.
+    let outside = ctx.input(|i| {
+        i.pointer.any_pressed()
+            && i.pointer
+                .interact_pos()
+                .is_some_and(|at| !area.response.rect.contains(at))
+    });
     if let Some(i) = run {
         actions.push(Action::TogglePalette);
         let item = results.swap_remove(i);
         actions.push(Action::PalettePicked(item.title));
         actions.extend(item.actions);
-    } else if escape {
+    } else if escape
+        // The bar's ⌘K link toggles it already this frame.
+        || (outside && !actions.iter().any(|a| matches!(a, Action::TogglePalette)))
+    {
         actions.push(Action::TogglePalette);
     }
 }

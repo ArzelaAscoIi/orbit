@@ -943,7 +943,10 @@ impl App {
             Action::NewTicket => {
                 self.sheet = false;
                 if self.capture.is_none() {
-                    self.capture = Some(Default::default());
+                    self.capture = Some(crate::app::Capture {
+                        note: std::mem::take(&mut self.capture_draft),
+                        ..Default::default()
+                    });
                 }
             }
             Action::NewTicketWith(note) => {
@@ -953,6 +956,7 @@ impl App {
                 });
             }
             Action::Find => self.find.get_or_insert_default().focus = true,
+            Action::FindClose => self.find = None,
             Action::TogglePalette => {
                 self.palette = match self.palette {
                     Some(_) => None,
@@ -1056,7 +1060,11 @@ impl App {
                     palette.selected = 0;
                 }
             }
-            Action::CloseCapture => self.capture = None,
+            Action::CloseCapture => {
+                if let Some(capture) = self.capture.take() {
+                    self.capture_draft = closed_draft(&capture);
+                }
+            }
             Action::ReadNote => {
                 let key = self.anthropic_key.clone();
                 let Some(capture) = self.capture.as_mut().filter(|c| !c.busy) else {
@@ -3671,6 +3679,16 @@ const WINDOWS: &str = "windows.json";
 const NOT_ON_BOARD: &str = "That ticket is not on the board: done or canceled a while ago, \
      another team's, or older than its newest 100.";
 
+/// What a closed report leaves to open on next time: its note, unless it
+/// was filed or added to a ticket already.
+fn closed_draft(capture: &crate::app::Capture) -> String {
+    if capture.created.is_some() || capture.added {
+        String::new()
+    } else {
+        capture.note.clone()
+    }
+}
+
 /// What Land approved does with one approved PR: the button counts the
 /// ones it acts on (`acts`), the click does exactly those.
 #[derive(Debug, PartialEq)]
@@ -3981,6 +3999,17 @@ fn ticket_of(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_closed_report_keeps_its_note_until_filed() {
+        let mut capture = crate::app::Capture {
+            note: "the merge button is hidden".into(),
+            ..Default::default()
+        };
+        assert_eq!(super::closed_draft(&capture), "the merge button is hidden");
+        capture.created = Some(("ABC-1".into(), "https://linear.app/x/ABC-1".into()));
+        assert_eq!(super::closed_draft(&capture), "");
+    }
+
     use super::*;
 
     #[test]

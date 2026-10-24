@@ -179,11 +179,11 @@ pub(super) fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
             actions.extend(open(true));
         }
     });
-    // Only the sheet's search field keeps its keys; a terminal under the
-    // sheet gives them up.
+    // Only the sheet's search field and find (Cmd+F, over everything)
+    // keep their keys; a terminal under the sheet gives them up.
     let field = egui::Id::unique(SEARCH);
     match ui.ctx().memory(|m| m.focused()) {
-        Some(id) if id == field => return,
+        Some(id) if id == field || id == super::find::field_id() => return,
         Some(_) => ui.ctx().memory_mut(|m| m.stop_text_input()),
         None => {}
     }

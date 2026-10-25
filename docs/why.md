@@ -2,6 +2,8 @@
 
 ## The problem is not running agents
 
+<p align="center"><img src="../assets/chaos-vs-control@2x.png" alt="Before: four Claude Code terminals and your head as the scheduler. After: one Orbit window, the backlog as the scheduler, the session beside the ticket queue" width="900"></p>
+
 Running five Claude Code sessions is easy now. herdr, tmux, Xirp, a few iTerm
 tabs: pick one. The hard part comes after:
 

@@ -57,6 +57,8 @@ logins, and keeps everything else on your machine.
 
 <p align="center"><img src="assets/orbit-arch.png" alt="Orbit sits between your cloud tools (Linear, GitHub, alerts, cloud agents) and your Mac: your terminal sessions, your setup, one local index" width="900"></p>
 
+<p align="center"><img src="assets/chaos-vs-control@2x.png" alt="Before: four Claude Code terminals and your head as the scheduler. After: one Orbit window, the backlog as the scheduler, the session beside the ticket queue" width="900"></p>
+
 Agent tools give you more terminals. **Orbit gives your agents a backlog.**
 
 Every ticket shows its stage and the one move it needs. Every ticket gets its

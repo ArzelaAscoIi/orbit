@@ -26,11 +26,13 @@
 
 ---
 
-<p align="center"><img src="assets/orbit-arch.png" alt="Orbit sits between your cloud tools (Linear, GitHub, alerts, cloud agents) and your Mac: your terminal sessions, your setup, one local index" width="900"></p>
+<p align="center"><img src="assets/orbit-clone-overlay.gif" alt="Orbit and the clone: cloud tools on top, your terminal sessions and setup on your Mac, one local index linking ticket, PR and session" width="900"></p>
 
 <p align="center"><img src="docs/demo.gif" alt="Orbit: every ticket's next move in the sidebar, its Claude session in the middle, the clone driving missions on the right" width="900"></p>
 
 <p align="center"><sub>Left: every ticket with its state and next move (fix comments, approve, merge). Middle: its Claude session. Right: the clone, driving a goal of many tickets.</sub></p>
+
+<p align="center"><img src="assets/orbit-arch.png" alt="Orbit sits between your cloud tools (Linear, GitHub, alerts, cloud agents) and your Mac: your terminal sessions, your setup, one local index" width="900"></p>
 
 Agent tools give you more terminals. **Orbit gives your agents a backlog.**
 

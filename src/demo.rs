@@ -309,20 +309,22 @@ fn gate(url: &str) -> crate::github::Gate {
                 gate.why = "a check failed".into();
             }
         }
-        // A blocked ticket with two of the user's PRs: one approved with a
-        // red check (Fix fills its row, Land it beside it), one waiting for
-        // a review (Request AI review / Request review).
+        // A ticket with two of the user's PRs: both approved and
+        // green: the sidebar says merge.
         u if u.ends_with("/330") => {
             gate.author = "sam-lee".into();
             gate.own = true;
             gate.review = "APPROVED".into();
-            gate.checks = "FAILURE".into();
-            gate.why = "a check failed".into();
+            gate.green = true;
+            gate.why = String::new();
             gate.head_branch = "sam/widget-pin".into();
         }
         u if u.ends_with("/331") => {
             gate.author = "sam-lee".into();
             gate.own = true;
+            gate.review = "APPROVED".into();
+            gate.green = true;
+            gate.why = String::new();
             gate.head_branch = "sam/widget-dependency".into();
         }
         u if u.ends_with("/211") => {

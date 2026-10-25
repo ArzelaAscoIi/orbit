@@ -26,7 +26,9 @@
 
 ---
 
-<p align="center"><img src="docs/demo.gif" alt="Orbit: a ticket's next step, its Claude session and the PR walkthrough in one window" width="900"></p>
+<p align="center"><img src="docs/demo.gif" alt="Orbit: every ticket's next move in the sidebar, its Claude session in the middle, the clone driving missions on the right" width="900"></p>
+
+<p align="center"><sub>Left: every ticket with its state and next move (fix comments, approve, merge). Middle: its Claude session. Right: the clone, driving a goal of many tickets.</sub></p>
 
 Agent tools give you more terminals. **Orbit gives your agents a backlog.**
 
@@ -78,6 +80,16 @@ with you in charge instead of commenting at you.
   <img src="docs/img/for-you.png" alt="For you: only what waits on you, in columns" width="49%">
   <img src="docs/img/review.png" alt="A PR walkthrough with a question pinned to a line" width="49%">
 </p>
+
+**Also in the window**
+
+- **Plan my day** reads your goals for the week and ranks the day. Sessions start
+  the work they can do alone: a red PR fixed, a noisy alert tuned.
+- **Run the board** works the backlog unattended: lands approved PRs, fixes red
+  ones, grooms Triage. The autopilot repeats it hourly and switches itself off.
+- **Testing** gives merged work a short test plan. One click closes the ticket.
+- **Claude Code, Codex or pi** per ticket, six themes, and no Linear needed to
+  start: **Continue without Linear** keeps sessions, shells and GitHub PRs.
 
 ## The clone: one goal, many agents
 
@@ -155,7 +167,7 @@ unzip -q *-macos.zip && mv Orbit.app /Applications
 xattr -dr com.apple.quarantine /Applications/Orbit.app   # not notarized yet
 ```
 
-Open it, click **Sign in with Linear** and pick your teams. Then press Cmd+K and choose
+Open it, click **Sign in with Linear** and pick your teams. Later releases install from Settings → about. Then press Cmd+K and choose
 **Start the tutorial** for a two-minute tour of every feature. No Linear? **Continue without
 Linear** keeps Claude sessions, shells and GitHub PRs; tickets need it.
 

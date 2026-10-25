@@ -24,6 +24,71 @@ toast) and is logged as the clone's, never as yours. The buttons that belong
 to you stay yours: `orbit ctl` refuses to approve or merge, and Orbit never
 posts a bot command the clone wrote.
 
+## How the clone works Orbit
+
+You run many agents at once: some on your Mac, some in the cloud. Each one
+works alone and none of them knows about the others. Someone has to know
+which session waits on you, which PR went red, which ticket is next. In Orbit
+that is the clone. It handles this through `orbit ctl`, the command line of
+the running app, so you stay on top of the work without checking every
+session yourself.
+
+`orbit ctl` talks to the Orbit window you have open, through a local socket.
+Every command prints JSON. There is no second copy of the board and no API of
+its own: the clone sees what you see and presses the buttons you could press.
+
+**It reads every session.** One call lists them all, local and remote:
+
+```sh
+orbit ctl sessions          # every session: ticket, agent (Claude Code, Codex, pi),
+                            # state (working, your turn, needs approval, done, failed),
+                            # its last note, the question it waits on, its PR,
+                            # the ticket's Linear state, why it failed
+orbit ctl ticket WEB-160    # one ticket: card, PRs with their merge gates, session
+orbit ctl alerts            # alerts, live incidents, red releases, and who is on them
+orbit ctl tickets           # For you, in its order
+```
+
+The states come from the hooks Orbit puts in every session it starts, so
+"your turn" means Claude asked or finished, not a guess from the screen.
+
+**It dispatches work, locally or remotely.**
+
+- *Locally*: a Claude Code session on the ticket, in its own git worktree,
+  started with a skill: `/plan`, `/build`, `/fix-pr-comments`, an alert
+  investigation, a red release.
+  ```sh
+  orbit ctl do '{"RunSkill":{"issue_id":"<id>","command":"/fix-pr-comments","submit":true}}'
+  orbit ctl wait WEB-160 "your turn" done failed --timeout 600
+  ```
+- *Remotely*: the team's cloud bot. A mission moves each sub-ticket to the
+  bot's Todo, which is the bot's go, and Orbit waits on it without a session
+  polling: `orbit ctl mission WEB-170 2`. `orbit ctl follow WEB-170` builds
+  the same parent in local sessions instead.
+
+**It manages what runs.** It closes sessions whose PR merged
+(`orbit ctl close`), restarts a fix when checks go red, prepares your reviews
+in one session, and stops starting new work while five or more things wait
+on you. Linear changes (a comment, a move, a parent, a blocks relation) go
+through Orbit's own key: `orbit ctl comment`, `move`, `parent`, `block`.
+
+**It tells you, briefly.** After each step it says one line in the window
+(`orbit ctl say`): a grey agent toast, and a Mac notification when Orbit is
+behind other windows. In a loop it says nothing when nothing changed.
+
+**You keep the last word.** Every action has a gate (`orbit ctl actions`):
+
+| Gate    | What it covers                                   | The clone           |
+|---------|--------------------------------------------------|---------------------|
+| look    | views, tickets, reading                          | presses             |
+| do      | starting, stopping, closing local sessions       | presses             |
+| queue   | what others see: Linear states, comments, PR reviewers | only when you asked |
+| yours   | approve, merge, a permission prompt              | refused             |
+
+Every press shows in your window as it happens and is logged as the clone's,
+never as yours (`orbit ctl log`). It never writes a bot command itself: only
+your click posts one.
+
 ## How a goal becomes merged PRs
 
 **1. You say what you want, in your words.**

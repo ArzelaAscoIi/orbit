@@ -1,6 +1,6 @@
 [package]
 name = "orbit"
-version = "0.0.12"
+version = "0.0.13"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "A native Linear client that follows your team's bot, with Claude Code per ticket"

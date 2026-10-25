@@ -26,6 +26,8 @@ posts a bot command the clone wrote.
 
 ## How the clone works Orbit
 
+<p align="center"><img src="../assets/clone-works@2x.png" alt="The clone is a Claude session that runs your other sessions: it talks to Orbit through orbit ctl, and Orbit tells and asks the Claude Code, Codex, pi and cloud bot sessions" width="900"></p>
+
 You run many agents at once: some on your Mac, some in the cloud. Each one
 works alone and none of them knows about the others. Someone has to know
 which session waits on you, which PR went red, which ticket is next. In Orbit

@@ -692,11 +692,11 @@ impl Client {
             }
             let data: Data = self
                 .query(
-                    r#"query($filter: IssueFilter!) {
+                    r"query($filter: IssueFilter!) {
                         issues(first: 8, filter: $filter) {
                             nodes { id identifier title url state { name } team { key } }
                         }
-                    }"#,
+                    }",
                     json!({ "filter": filter }),
                 )
                 .await?;

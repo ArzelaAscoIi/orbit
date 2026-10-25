@@ -27,7 +27,7 @@ use crate::story::{Event, Tone};
 pub enum State {
     /// A prompt went in; Claude is on it.
     Working,
-    /// Claude asked the user a question (AskUserQuestion) and waits.
+    /// Claude asked the user a question (`AskUserQuestion`) and waits.
     NeedsDecision,
     /// Claude waits for a tool permission.
     NeedsApproval,
@@ -165,7 +165,7 @@ pub fn hook(log: &Path) -> Result<()> {
 /// session waits for, as the hooks would. Ending is Claude Code's to say.
 pub fn report(log: &Path, state: &str, text: &str) -> Result<()> {
     let state = match State::parse(state) {
-        Some(State::Ended) | Some(State::Pr) | None => bail!(
+        Some(State::Ended | State::Pr) | None => bail!(
             "state {state:?} is not one of note, working, needs-decision, needs-approval, turn, failed"
         ),
         Some(state) => state,

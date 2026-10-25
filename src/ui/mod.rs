@@ -1126,7 +1126,7 @@ fn cmd_f(open: bool, has_keys: bool) -> Action {
 
 /// The window `by` steps from `at` in a strip of `len`, wrapping around.
 fn step(at: usize, len: usize, by: i32) -> usize {
-    (at as i64 + by as i64).rem_euclid(len.max(1) as i64) as usize
+    (at as i64 + i64::from(by)).rem_euclid(len.max(1) as i64) as usize
 }
 
 #[cfg(test)]

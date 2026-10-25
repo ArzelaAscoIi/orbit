@@ -79,3 +79,20 @@ opt-level = 3
 # MIT stand-in for option-ext (MPL-2.0): vendor/option-ext.
 [patch.crates-io]
 option-ext = { path = "vendor/option-ext" }
+
+[lints.clippy]
+# Pedantic lints on top of clippy's defaults: the ones that make code read
+# plainer. `make check` denies warnings, so they stay fixed.
+cast_lossless = "warn"
+cloned_instead_of_copied = "warn"
+doc_markdown = "warn"
+ignored_unit_patterns = "warn"
+implicit_clone = "warn"
+manual_let_else = "warn"
+map_unwrap_or = "warn"
+match_bool = "warn"
+match_wildcard_for_single_variants = "warn"
+needless_raw_string_hashes = "warn"
+semicolon_if_nothing_returned = "warn"
+uninlined_format_args = "warn"
+unnested_or_patterns = "warn"

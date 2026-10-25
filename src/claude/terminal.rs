@@ -403,8 +403,10 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
     let edge_at = |at: egui::Pos2| {
         let row = ((at.y - origin.y) / cell_h)
             .floor()
-            .clamp(0.0, rows as f32 - 1.0) as u16;
-        let col = ((at.x - origin.x) / cell_w).round().clamp(0.0, cols as f32) as u16;
+            .clamp(0.0, f32::from(rows) - 1.0) as u16;
+        let col = ((at.x - origin.x) / cell_w)
+            .round()
+            .clamp(0.0, f32::from(cols)) as u16;
         (row, col)
     };
     if response.drag_started()
@@ -503,10 +505,10 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
             painter.rect_filled(
                 Rect::from_min_size(
                     pos2(
-                        origin.x + from as f32 * cell_w,
-                        origin.y + row as f32 * cell_h,
+                        origin.x + f32::from(from) * cell_w,
+                        origin.y + f32::from(row) * cell_h,
                     ),
-                    vec2((to - from) as f32 * cell_w, cell_h),
+                    vec2(f32::from(to - from) * cell_w, cell_h),
                 ),
                 0.0,
                 theme::p().signal.gamma_multiply(0.35),
@@ -535,7 +537,7 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
         }
     }
     for row in 0..rows {
-        let y = origin.y + row as f32 * cell_h;
+        let y = origin.y + f32::from(row) * cell_h;
         // Runs of plain-width text in one style are drawn together; anything
         // else is drawn at its own cell so columns stay aligned.
         let mut run = String::new();
@@ -546,7 +548,7 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
                 && !run.trim().is_empty()
             {
                 painter.text(
-                    pos2(origin.x + col as f32 * cell_w, y),
+                    pos2(origin.x + f32::from(col) * cell_w, y),
                     egui::Align2::LEFT_TOP,
                     run.as_str(),
                     font.clone(),
@@ -574,7 +576,7 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
             if bg != theme::p().bg {
                 painter.rect_filled(
                     Rect::from_min_size(
-                        pos2(origin.x + col as f32 * cell_w, y),
+                        pos2(origin.x + f32::from(col) * cell_w, y),
                         vec2(cell_w * width, cell_h),
                     ),
                     0.0,
@@ -597,7 +599,7 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
                 run.push_str(text);
             } else {
                 painter.text(
-                    pos2(origin.x + col as f32 * cell_w, y),
+                    pos2(origin.x + f32::from(col) * cell_w, y),
                     egui::Align2::LEFT_TOP,
                     text,
                     font.clone(),
@@ -613,8 +615,8 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
         painter.rect_filled(
             Rect::from_min_size(
                 pos2(
-                    origin.x + col as f32 * cell_w,
-                    origin.y + row as f32 * cell_h,
+                    origin.x + f32::from(col) * cell_w,
+                    origin.y + f32::from(row) * cell_h,
                 ),
                 vec2(cell_w, cell_h),
             ),
@@ -1080,8 +1082,8 @@ mod perf {
         }
         eprintln!(
             "PERF frames/s: {:.1}; glance: {:.2} ms per frame, {:.1} ms/s total",
-            frames as f64 / 5.0,
-            glance_time.as_secs_f64() * 1000.0 / frames.max(1) as f64,
+            f64::from(frames) / 5.0,
+            glance_time.as_secs_f64() * 1000.0 / f64::from(frames.max(1)),
             glance_time.as_secs_f64() * 1000.0 / 5.0
         );
         drop(terms);

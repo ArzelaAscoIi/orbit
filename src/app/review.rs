@@ -290,14 +290,14 @@ fn save_ppm(path: &std::path::Path, image: &egui::ColorImage) {
 /// Simulated users (scripts/simulate.sh): `ORBIT_SIMULATE=<steps.json>`
 /// plays steps on the loaded board and saves a frame at each `shot` into
 /// `ORBIT_SIM_OUT`, then quits. Only with `ORBIT_READ_ONLY=1`: a simulated
-/// user must never change anything in Linear or GitHub (main.rs read_only).
+/// user must never change anything in Linear or GitHub (main.rs `read_only`).
 ///
 /// Steps, one JSON string each: `show <view>`, `select <n>` (the n-th ticket
 /// of the list), `tab <walkthrough|diff|claude|testing>`, `palette <query>`,
 /// `note <text>` (New ticket with it), `ask <text>` (a question about the
-/// shown PR), `do <Action>` for the ones without arguments (ReadNote,
-/// FileAsIs, CloseCapture, SpotWork, Refresh, TogglePalette, Triage,
-/// NewTicket, Orchestrate, Guide, BrowserWindow, ToggleChat), `browse <url>` (the focused
+/// shown PR), `do <Action>` for the ones without arguments (`ReadNote`,
+/// `FileAsIs`, `CloseCapture`, `SpotWork`, Refresh, `TogglePalette`, Triage,
+/// `NewTicket`, Orchestrate, Guide, `BrowserWindow`, `ToggleChat`), `browse <url>` (the focused
 /// browser pane goes there), `wait <s>`, `shot <name>`.
 pub(super) fn simulate(app: &mut App, ctx: &egui::Context) {
     use std::sync::Mutex;

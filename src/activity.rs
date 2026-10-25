@@ -247,7 +247,7 @@ pub fn hashed(id: &str) -> String {
 /// The line for one action, `detail` being the variant of its argument when
 /// that says where it went (Show's view, Tab's tab), and `via` `key`,
 /// `click` or empty (the app did it). `ctx`: the situation a decision was
-/// taken in (App::situation), enums and counts only.
+/// taken in (`App::situation`), enums and counts only.
 pub fn line(
     at_ms: u128,
     event: &str,

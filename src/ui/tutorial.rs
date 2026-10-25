@@ -1098,7 +1098,7 @@ pub(super) fn overlay(app: &App, ui: &mut Ui, actions: &mut Vec<Action>) {
                 .stroke(Stroke::new(1.0, p().signal))
                 .inner_margin(PAD)
                 .show(ui, |ui| {
-                    ui.set_width(CARD.x - 2.0 * PAD as f32);
+                    ui.set_width(CARD.x - 2.0 * f32::from(PAD));
                     ui.horizontal(|ui| {
                         ui.label(label("▲ tutorial").color(p().signal));
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

@@ -141,7 +141,7 @@ pub enum Action {
     },
     /// Approves this PR URL at this head commit. Only offered when the
     /// gate says the user's review is missing, and checked again first.
-    /// `body`: the user's approval note (approve_notes), if they kept one.
+    /// `body`: the user's approval note (`approve_notes`), if they kept one.
     Approve {
         url: String,
         head: String,
@@ -397,14 +397,14 @@ pub enum Action {
     /// Tells the clone what to do, in the user's words: a Claude run that
     /// researches, files the tickets and hands the parent to a mission.
     Instruct(String),
-    /// Starts the operator (claude::operator): one Claude run that works
+    /// Starts the operator (`claude::operator`): one Claude run that works
     /// Orbit through `orbit ctl` and says what it did.
     Operate,
     /// The hourly pass (clone panel): on starts one operator session whose
     /// /loop runs the operate skill every hour on the jobs picked; off
     /// stops it.
     Clone(bool),
-    /// Picks or drops one of the hourly pass's jobs (claude::PASS_TASKS).
+    /// Picks or drops one of the hourly pass's jobs (`claude::PASS_TASKS`).
     PassTask(String, bool),
     /// Switches the autopilot (autopilot.rs) on or off: Run the board every
     /// hour, off by itself after eight runs.
@@ -508,7 +508,7 @@ pub enum Action {
     FullScreen,
     PaneRatio(u64, f32),
     /// The embedded browser: open an address, go back, reload.
-    /// `slot`: browser::TESTING, or a browser pane's id.
+    /// `slot`: `browser::TESTING`, or a browser pane's id.
     BrowserGo(u64, String),
     BrowserBack(u64),
     BrowserReload(u64),
@@ -737,7 +737,7 @@ pub struct App {
     /// Diffs by PR URL, and the ones asked for; absent from both until a
     /// Diff tab shows the PR (`load_diffs`).
     pub diffs: HashMap<String, Result<Vec<crate::github::File>, String>>,
-    /// What people said on each PR shown (github::talk), fetched with the diff.
+    /// What people said on each PR shown (`github::talk`), fetched with the diff.
     pub talk: HashMap<String, Result<crate::github::Talk, String>>,
     /// The Diff tab in one column instead of side by side.
     pub unified_diff: bool,
@@ -1082,7 +1082,7 @@ pub struct App {
 }
 
 /// Laya's quick actions are for a ticket before any PR: only these are
-/// asked about (App::load_quick) and show them (ui/ticket.rs).
+/// asked about (`App::load_quick`) and show them (ui/ticket.rs).
 /// The person who filed the ticket, when that is someone to ask for a
 /// review: not the user, not a bot, and the ticket has an open PR in review.
 pub fn reporter<'a>(card: &'a Card, viewer: &str) -> Option<&'a str> {

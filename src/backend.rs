@@ -74,12 +74,12 @@ pub enum Command {
     TakeFromBot {
         issue_id: String,
     },
-    /// The GitHub login of an org member by their name (github::login_of).
+    /// The GitHub login of an org member by their name (`github::login_of`).
     FindLogin {
         org: String,
         name: String,
     },
-    /// Asks this login to review the PR (github::request_review).
+    /// Asks this login to review the PR (`github::request_review`).
     RequestReview {
         url: String,
         login: String,
@@ -89,12 +89,12 @@ pub enum Command {
         url: String,
         label: String,
     },
-    /// What people said on a PR (github::talk).
+    /// What people said on a PR (`github::talk`).
     Talk {
         url: String,
     },
     /// Moves the issue to another team, in that team's state; answered as
-    /// a StateSet, since the hold is the same.
+    /// a `StateSet`, since the hold is the same.
     MoveTeam {
         issue_id: String,
         team_id: String,
@@ -153,7 +153,7 @@ pub enum Command {
         body: Option<String>,
     },
     /// The user's questions about a PR and Claude's answers as one short
-    /// approval note (anthropic::approve_note).
+    /// approval note (`anthropic::approve_note`).
     ApproveNote {
         url: String,
         key: String,
@@ -195,7 +195,7 @@ pub enum Command {
         hash: u64,
         text: String,
     },
-    /// Laya on each session's last message (laya::asks), `(key, text)`.
+    /// Laya on each session's last message (`laya::asks`), `(key, text)`.
     LayaAsks(Vec<(String, String)>),
     Guide {
         url: String,
@@ -205,7 +205,7 @@ pub enum Command {
         /// A re-review: the earlier one to follow up on.
         since: Option<Since>,
     },
-    /// The reviewer's own question about a PR (anthropic::ask_pr).
+    /// The reviewer's own question about a PR (`anthropic::ask_pr`).
     AskPr {
         url: String,
         key: String,
@@ -238,7 +238,7 @@ pub enum Command {
     MyPrs,
     /// Dependabot PRs on these repos or waiting on the user's review, for KTLO.
     DependabotPrs(Vec<String>),
-    /// The open PRs of one repo (`owner/repo`), for its page (View::Repo).
+    /// The open PRs of one repo (`owner/repo`), for its page (`View::Repo`).
     RepoPrs(String),
     /// Who may review on one repo (`owner/repo`): Request review's picks.
     Reviewers(String),
@@ -297,7 +297,7 @@ pub enum Command {
         /// settings.json `laya`: whether to use it, and from what
         /// confidence; `None` when it is off.
         laya: Option<(bool, f64)>,
-        /// Which team owns what (capture::teams_text).
+        /// Which team owns what (`capture::teams_text`).
         teams: String,
         /// Read already (a Work spot): only the duplicate check runs.
         known: Option<crate::capture::Intake>,
@@ -550,7 +550,7 @@ pub enum Event {
 }
 
 impl Command {
-    /// Asks Linear: dropped while Orbit runs without it (App::send).
+    /// Asks Linear: dropped while Orbit runs without it (`App::send`).
     /// Inbox asks GitHub too, and the Linear client answers it empty.
     pub fn needs_linear(&self) -> bool {
         matches!(

@@ -1,6 +1,6 @@
 //! The profile's k9s pieces for the debug panes (`Profile::k9s`): the
 //! entries of its `aliases.yaml`, `views.yaml` and `plugins.yaml` go into
-//! the files of the same name in the user's k9s config dir (K9S_CONFIG_DIR,
+//! the files of the same name in the user's k9s config dir (`K9S_CONFIG_DIR`,
 //! else the OS default k9s itself uses), kept between two marker lines so a
 //! changed profile replaces its own block and never touches the user's
 //! entries. Every other file is a script a plugin calls: written to

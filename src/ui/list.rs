@@ -894,10 +894,10 @@ fn customers(app: &App, cursor: Option<&Entry>, ui: &mut Ui, actions: &mut Vec<A
                                 );
                             }
                         });
-                        let line = app
-                            .digest(&format!("customer:{name}"))
-                            .map(str::to_owned)
-                            .unwrap_or_else(|| format!("{moving} moving · {shipped} shipped"));
+                        let line = app.digest(&format!("customer:{name}")).map_or_else(
+                            || format!("{moving} moving · {shipped} shipped"),
+                            str::to_owned,
+                        );
                         ui.add(
                             egui::Label::new(RichText::new(line).small().color(p().text_2)).wrap(),
                         );

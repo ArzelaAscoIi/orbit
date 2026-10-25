@@ -55,8 +55,7 @@ pub fn last_activity(saved: &Saved, reports: &[Report], seen: Option<SystemTime>
     let started = saved
         .started_at
         .parse::<jiff::Timestamp>()
-        .map(SystemTime::from)
-        .unwrap_or(SystemTime::UNIX_EPOCH);
+        .map_or(SystemTime::UNIX_EPOCH, SystemTime::from);
     reports
         .iter()
         .map(|r| r.at)

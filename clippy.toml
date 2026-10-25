@@ -1,0 +1,2 @@
+# Names the doc-comment lint (clippy::doc_markdown) reads as words, not code.
+doc-valid-idents = ["SigNoz", "WebKit", "OpenAI", "PyTorch", "AppKit", "ModernBERT", "UserNotifications", "GitHub", "macOS", ".."]

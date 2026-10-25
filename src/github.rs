@@ -19,7 +19,7 @@ pub struct File {
     pub added: usize,
     pub removed: usize,
     pub lines: Vec<Line>,
-    /// Each line's syntax colours (syntax::spans), filled when it loads.
+    /// Each line's syntax colours (`syntax::spans`), filled when it loads.
     pub spans: Vec<Vec<crate::syntax::Span>>,
 }
 
@@ -1308,7 +1308,7 @@ pub fn line_at(file: &File, n: usize) -> Option<(&'static str, usize)> {
             Line::Removed(_) => old += 1,
             _ if here => return Some(("RIGHT", new)),
             Line::Added(_) => new += 1,
-            _ => {
+            Line::Context(_) => {
                 old += 1;
                 new += 1;
             }
@@ -1392,7 +1392,7 @@ pub fn review(url: &str, head: &str, drafts: &[Draft], body: &str, changes: bool
 }
 
 /// The reviews API body: the line drafts and the user's summary, as one
-/// COMMENT or REQUEST_CHANGES review bound to `head`. Refused when there
+/// COMMENT or `REQUEST_CHANGES` review bound to `head`. Refused when there
 /// is nothing to say (request changes needs its reason written out), or
 /// when any text reads like a bot command.
 fn review_request(

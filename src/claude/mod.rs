@@ -545,8 +545,7 @@ impl Sessions {
 
     fn at(file: PathBuf) -> Self {
         let work = crate::store::env_os("WORKDIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| crate::store::data_dir().join("work"));
+            .map_or_else(|| crate::store::data_dir().join("work"), PathBuf::from);
         let (done_tx, done_rx) = channel();
         Self {
             work,
@@ -872,8 +871,7 @@ impl Sessions {
                 let detail = params["command"]
                     .as_str()
                     .or_else(|| params["reason"].as_str())
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| params.to_string());
+                    .map_or_else(|| params.to_string(), str::to_owned);
                 // What the run may never do is declined here, never offered
                 // to a click; a read-only run's file write too, so an
                 // unattended Plan my day does not stop on it.
@@ -1438,7 +1436,7 @@ impl Sessions {
 
     /// Sessions whose waiting line can be typed now: attached, drawn, and
     /// alive. A stopped session's terminal keeps its last screen, and a line
-    /// pasted there was lost while RunSkill said ok
+    /// pasted there was lost while `RunSkill` said ok
     /// (learnings/stuck-session-send-build.md); it waits for the reattach.
     fn lines_to_type(&mut self) -> Vec<String> {
         let waiting: Vec<String> = self
@@ -2092,7 +2090,7 @@ pub fn summary(card: &Card) -> String {
 }
 
 /// Said with the worktree command: a session's own folder is not a git
-/// repository, so Claude Code's EnterWorktree (which isolates inside the
+/// repository, so Claude Code's `EnterWorktree` (which isolates inside the
 /// launch folder's repo) fails there every time.
 const NOT_GIT: &str = "This folder is not a git repository, so the EnterWorktree tool \
     fails here: do not call it. The worktree this command prints is your isolation; commit \

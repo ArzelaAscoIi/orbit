@@ -573,7 +573,7 @@ fn readable_uncached(fg: Color32, bg: Color32) -> Color32 {
 
 fn luminance(c: Color32) -> f32 {
     let lin = |v: u8| {
-        let v = v as f32 / 255.0;
+        let v = f32::from(v) / 255.0;
         if v <= 0.04045 {
             v / 12.92
         } else {
@@ -672,13 +672,13 @@ mod tests {
     fn the_two_light_themes_look_apart() {
         const { assert!(!DAYLIGHT.dark && !PAPER.dark) };
         let far = |a: Color32, b: Color32| {
-            (a.r() as i32 - b.r() as i32).abs()
-                + (a.g() as i32 - b.g() as i32).abs()
-                + (a.b() as i32 - b.b() as i32).abs()
+            (i32::from(a.r()) - i32::from(b.r())).abs()
+                + (i32::from(a.g()) - i32::from(b.g())).abs()
+                + (i32::from(a.b()) - i32::from(b.b())).abs()
         };
         // As light as each other (neither glares), told apart by hue:
         // Paper warm, Daylight cool.
-        let warmth = |c: Color32| c.r() as i32 - c.b() as i32;
+        let warmth = |c: Color32| i32::from(c.r()) - i32::from(c.b());
         assert!(
             warmth(PAPER.bg) > 4 && warmth(DAYLIGHT.bg) < -4,
             "warm vs cool"

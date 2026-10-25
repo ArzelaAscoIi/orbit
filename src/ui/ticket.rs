@@ -261,12 +261,10 @@ fn tabs(
         if card.is_none()
             && let Some(key) = view.session.as_deref().filter(|_| view.tab == Tab::Claude)
         {
-            let name = app
-                .claude
-                .saved
-                .get(key)
-                .map(|s| format!("{}  {}", s.identifier, s.title))
-                .unwrap_or_else(|| key.to_owned());
+            let name = app.claude.saved.get(key).map_or_else(
+                || key.to_owned(),
+                |s| format!("{}  {}", s.identifier, s.title),
+            );
             ui.add(egui::Label::new(RichText::new(name).family(medium())).truncate());
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -466,7 +464,7 @@ fn state_picker(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) 
         .states
         .get(&card.issue.team.id)
         .map(Vec::as_slice)
-        .unwrap_or(&[]);
+        .unwrap_or_default();
     let picker = egui::ComboBox::from_id_salt(("state", &card.issue.id))
         .selected_text(&card.issue.state.name)
         .show_ui(ui, |ui| {
@@ -649,7 +647,7 @@ fn your_move(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
                                 ui.add_space(6.0);
                             } else {
                                 ui.horizontal_wrapped(|ui| {
-                                    pr_buttons(app, card, pr, true, ui, actions)
+                                    pr_buttons(app, card, pr, true, ui, actions);
                                 });
                             }
                         }
@@ -2377,9 +2375,10 @@ fn family(card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
             ui.label(label("part of"));
             let text = format!("{} {}", parent.identifier, parent.title);
             if link(ui, RichText::new(text).color(p().text)).clicked() {
-                actions.push(match parent.url.is_empty() {
-                    true => Action::Focus(parent.id.clone()),
-                    false => Action::Link(parent.url.clone()),
+                actions.push(if parent.url.is_empty() {
+                    Action::Focus(parent.id.clone())
+                } else {
+                    Action::Link(parent.url.clone())
                 });
             }
         });

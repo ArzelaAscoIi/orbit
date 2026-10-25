@@ -254,7 +254,7 @@ pub struct Clone {
     pub skills: Vec<String>,
     /// What it should always know or do, in the user's words.
     pub instructions: String,
-    /// The hourly pass's jobs (claude::PASS_TASKS: alerts, notifications,
+    /// The hourly pass's jobs (`claude::PASS_TASKS`: alerts, notifications,
     /// foryou, prs, sessions, initiatives); unset: all of them; an empty
     /// list: none, the pass is paused.
     pub tasks: Option<Vec<String>>,

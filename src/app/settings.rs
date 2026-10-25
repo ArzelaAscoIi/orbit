@@ -306,7 +306,7 @@ impl App {
     }
 
     /// Puts a profile in use and remembers it in settings.json. The
-    /// settings it brings stay defaults under the file (store::load_settings),
+    /// settings it brings stay defaults under the file (`store::load_settings`),
     /// so a later version of the profile reaches the user too.
     pub(super) fn use_profile(
         &mut self,

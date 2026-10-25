@@ -14,7 +14,7 @@ pub struct Local {
     pub days: usize,
     /// Share of actions taken by key rather than mouse.
     pub by_key: f64,
-    /// Actions per gate (activity::Gate): look, app, do, queue, yours.
+    /// Actions per gate (`activity::Gate`): look, app, do, queue, yours.
     pub gates: BTreeMap<String, usize>,
     pub approvals: usize,
     pub merges: usize,
@@ -40,7 +40,7 @@ pub fn week(activity: &str, status: &[String], now_ms: u128) -> Local {
         let Ok(e) = serde_json::from_str::<serde_json::Value>(line) else {
             continue;
         };
-        let t = e["t"].as_u64().unwrap_or(0) as u128;
+        let t = u128::from(e["t"].as_u64().unwrap_or(0));
         let event = e["event"].as_str().unwrap_or_default();
         if t < from || t > now_ms || event == "error" || event == "start" {
             continue;
@@ -50,10 +50,13 @@ pub fn week(activity: &str, status: &[String], now_ms: u128) -> Local {
         if e["via"] == "key" {
             keys += 1;
         }
-        let gate = e["gate"].as_str().map(str::to_owned).unwrap_or_else(|| {
-            crate::activity::gate(event)
-                .map_or("other".into(), |g| crate::activity::name(&g).to_lowercase())
-        });
+        let gate = e["gate"].as_str().map_or_else(
+            || {
+                crate::activity::gate(event)
+                    .map_or("other".into(), |g| crate::activity::name(&g).to_lowercase())
+            },
+            str::to_owned,
+        );
         *local.gates.entry(gate.clone()).or_default() += 1;
         match event {
             "Approve" => local.approvals += 1,

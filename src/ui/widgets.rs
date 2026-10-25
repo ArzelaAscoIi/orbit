@@ -91,7 +91,7 @@ pub(super) fn header_bar(
 pub(super) fn title_bar(ui: &mut Ui, title: &str, subtitle: &str, keys: &str) {
     header_bar(ui, BAR, |ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.add_space(PAD as f32);
+            ui.add_space(f32::from(PAD));
             ui.label(label(keys));
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 title_text(ui, title, subtitle);
@@ -101,7 +101,7 @@ pub(super) fn title_bar(ui: &mut Ui, title: &str, subtitle: &str, keys: &str) {
 }
 
 fn title_text(ui: &mut Ui, title: &str, subtitle: &str) {
-    ui.add_space(PAD as f32);
+    ui.add_space(f32::from(PAD));
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         // A vertical block in a row starts at the top; centre it by hand.
@@ -201,7 +201,7 @@ pub(super) fn clickable_with(
         // A selectable label senses clicks too and would sit on top: a
         // click on the text would select it instead of clicking the row.
         ui.style_mut().interaction.selectable_labels = false;
-        add_contents(ui)
+        add_contents(ui);
     })
     .response
 }

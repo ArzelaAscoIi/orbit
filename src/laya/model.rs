@@ -202,8 +202,8 @@ impl Laya {
 
 /// `softmax(logits / t)`: `[false, true]` for a noul question.
 fn calibrate(logits: &[f32], t: f64) -> Noul {
-    let z: Vec<f64> = logits.iter().map(|&l| l as f64 / t).collect();
-    let max = z.iter().cloned().fold(f64::MIN, f64::max);
+    let z: Vec<f64> = logits.iter().map(|&l| f64::from(l) / t).collect();
+    let max = z.iter().copied().fold(f64::MIN, f64::max);
     let e: Vec<f64> = z.iter().map(|v| (v - max).exp()).collect();
     let sum: f64 = e.iter().sum();
     let p = e[1] / sum;

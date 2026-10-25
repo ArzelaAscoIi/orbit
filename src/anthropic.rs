@@ -471,10 +471,10 @@ pub(crate) fn parse_guide(text: &str) -> Guide {
             ["SUMMARY", summary, ..] => guide.summary = (*summary).to_owned(),
             ["WHY", why, ..] => guide.why = (*why).to_owned(),
             ["RISK", level, what, ..] => {
-                guide.risk = Some((level.trim().to_lowercase(), (*what).to_owned()))
+                guide.risk = Some((level.trim().to_lowercase(), (*what).to_owned()));
             }
             ["ASK", ask, ..] if ask.trim() != "-" && !ask.trim().is_empty() => {
-                guide.challenge = Some((*ask).to_owned())
+                guide.challenge = Some((*ask).to_owned());
             }
             ["RESOLVED", comment, verdict, how, ..] => guide.resolved.push(Resolved {
                 comment: (*comment).to_owned(),

@@ -1184,9 +1184,10 @@ fn why(issue: &Issue, stage: Stage, ask: Option<Ask>, prs: &[Pr], ci: Ci) -> Str
             }
             parts.join(" · ")
         }
-        (Some(Ask::Decide), _) => bot_says(comments, ROUTED_BLOCKED)
-            .map(|c| first_sentence(c.body.trim_start_matches("🤖 Routed to **Blocked** — ")))
-            .unwrap_or_else(|| "Blocked, no reason recorded on the ticket.".into()),
+        (Some(Ask::Decide), _) => bot_says(comments, ROUTED_BLOCKED).map_or_else(
+            || "Blocked, no reason recorded on the ticket.".into(),
+            |c| first_sentence(c.body.trim_start_matches("🤖 Routed to **Blocked** — ")),
+        ),
         // Blocked by a person: their latest word is the reason.
         (None, Stage::Blocked) => comments
             .iter()
@@ -1320,7 +1321,7 @@ fn story(issue: &Issue, parents: &HashSet<String>) -> (String, String) {
         return (format!("area:{area}"), area);
     }
     if let Some(flow) = filing_flow(&issue.title) {
-        return (format!("flow:{flow}"), flow.to_owned());
+        return (format!("flow:{flow}"), flow.clone());
     }
     ("loose".into(), "Loose tickets".into())
 }

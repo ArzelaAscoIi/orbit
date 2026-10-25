@@ -29,7 +29,7 @@ use egui::{Id, Rect};
 pub const TESTING: u64 = u64::MAX;
 
 /// Sends the page's shortcuts to the app: `find`, or `key:<code>:<mods>`.
-const KEYS: &str = r#"document.addEventListener('keydown', function (e) {
+const KEYS: &str = r"document.addEventListener('keydown', function (e) {
   if (!(e.metaKey || e.ctrlKey)) return;
   var k = (e.key || '').toLowerCase();
   if (k === 'f' && !e.shiftKey && !e.altKey) {
@@ -42,7 +42,7 @@ const KEYS: &str = r#"document.addEventListener('keydown', function (e) {
   e.preventDefault();
   window.ipc.postMessage('key:' + e.code + ':' + (e.metaKey ? 'm' : '') + (e.ctrlKey ? 'c' : '')
     + (e.shiftKey ? 's' : '') + (e.altKey ? 'a' : ''));
-}, true);"#;
+}, true);";
 
 /// Asks for the browser in `slot` this frame, filling `rect`, starting at `home`.
 pub fn place(ctx: &egui::Context, slot: u64, rect: Rect, home: &str) {
@@ -278,7 +278,7 @@ pub fn loadable(url: &str) -> bool {
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
     let port_ok =
-        port.chars().all(|c| c.is_ascii_digit()) && (port.is_empty() == !authority.contains(':'));
+        port.chars().all(|c| c.is_ascii_digit()) && port.is_empty() != authority.contains(':');
     clean && host_ok && port_ok
 }
 

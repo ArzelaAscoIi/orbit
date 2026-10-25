@@ -347,7 +347,7 @@ fn tail(path: &Path, bytes: u64) -> String {
     let Ok(mut file) = std::fs::File::open(path) else {
         return String::new();
     };
-    let len = file.metadata().map(|m| m.len()).unwrap_or(0);
+    let len = file.metadata().map_or(0, |m| m.len());
     let start = len.saturating_sub(bytes);
     let mut buf = Vec::new();
     if file.seek(SeekFrom::Start(start)).is_err() || file.read_to_end(&mut buf).is_err() {

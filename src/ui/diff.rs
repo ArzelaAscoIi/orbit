@@ -176,7 +176,7 @@ pub(super) fn show(app: &mut App, card: &Card, pr: &Pr, ui: &mut Ui, actions: &m
                         .id_salt("file-tree")
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
-                            file_tree(&rows, &folders, &viewed_paths, &pr.url, ui, actions)
+                            file_tree(&rows, &folders, &viewed_paths, &pr.url, ui, actions);
                         });
                 })
                 .response

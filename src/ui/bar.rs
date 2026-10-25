@@ -675,10 +675,10 @@ pub(super) fn herdr_keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
         "switch_tab" => actions.extend(index.map(Action::GoWindow)),
         "close_tab" => actions.push(Action::CloseWindow(app.window)),
         "focus_pane_left" | "focus_pane_up" | "cycle_pane_previous" => {
-            actions.push(Action::CyclePane(-1))
+            actions.push(Action::CyclePane(-1));
         }
         "focus_pane_right" | "focus_pane_down" | "cycle_pane_next" => {
-            actions.push(Action::CyclePane(1))
+            actions.push(Action::CyclePane(1));
         }
         "split_vertical" => actions.push(Action::Split { across: true }),
         "split_horizontal" => actions.push(Action::Split { across: false }),
@@ -1240,17 +1240,26 @@ pub(super) fn next_action(
 ) -> Option<&'static str> {
     if let Some(g) = gate.filter(|g| g.state == "OPEN" && !g.queued) {
         let red = matches!(g.checks.as_str(), "FAILURE" | "ERROR");
-        return match () {
-            _ if g.open_threads > 0 => Some("fix comments"),
-            _ if g.review == "CHANGES_REQUESTED" => Some("fix changes"),
-            _ if red => Some("fix CI"),
-            _ if g.branch == "DIRTY" => Some("fix conflicts"),
-            _ if g.green => Some("merge"),
-            _ if g.can_auto_merge => Some("merge when ready"),
-            _ if g.can_approve => Some("approve"),
-            _ if g.branch == "BEHIND" => Some("update branch"),
-            _ if g.own && g.review == "REVIEW_REQUIRED" => Some("ask for review"),
-            _ => None,
+        return if g.open_threads > 0 {
+            Some("fix comments")
+        } else if g.review == "CHANGES_REQUESTED" {
+            Some("fix changes")
+        } else if red {
+            Some("fix CI")
+        } else if g.branch == "DIRTY" {
+            Some("fix conflicts")
+        } else if g.green {
+            Some("merge")
+        } else if g.can_auto_merge {
+            Some("merge when ready")
+        } else if g.can_approve {
+            Some("approve")
+        } else if g.branch == "BEHIND" {
+            Some("update branch")
+        } else if g.own && g.review == "REVIEW_REQUIRED" {
+            Some("ask for review")
+        } else {
+            None
         };
     }
     match card.ask {
@@ -1751,7 +1760,7 @@ mod tests {
         assert_eq!(
             next(&gate(|g| {
                 g.green = true;
-                g.queued = true
+                g.queued = true;
             })),
             None
         );

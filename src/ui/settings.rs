@@ -440,7 +440,7 @@ fn connections(app: &mut App, ui: &mut Ui, actions: &mut Vec<Action>) {
 }
 
 /// The password field and Save for one key: the one place a key is typed,
-/// whether connecting the first time or replacing a saved one. SaveKey
+/// whether connecting the first time or replacing a saved one. `SaveKey`
 /// overwrites, so the same field changes a key that is already there.
 fn key_field(
     app: &mut App,

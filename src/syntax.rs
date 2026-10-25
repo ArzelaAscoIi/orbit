@@ -1,6 +1,6 @@
 //! Syntax colours for the Diff tab: each line's tokens by kind, worked out
 //! once when a diff loads (off the UI thread), drawn in the theme's colours
-//! (theme::syntax). Sublime grammars through syntect, pure Rust.
+//! (`theme::syntax`). Sublime grammars through syntect, pure Rust.
 
 use std::ops::Range;
 use std::sync::OnceLock;
@@ -109,15 +109,18 @@ fn kind_of(scopes: &[Scope]) -> Option<Kind> {
     scopes.iter().rev().find_map(|scope| {
         let name = scope.build_string();
         let is = |prefix: &str| name.starts_with(prefix);
-        match () {
-            _ if is("comment") => Some(Kind::Comment),
-            _ if is("string") => Some(Kind::String),
-            _ if is("constant.numeric") || is("constant.language") => Some(Kind::Number),
-            _ if is("keyword") || is("storage") => Some(Kind::Keyword),
-            _ if is("entity.name") || is("support.function") || is("support.type") => {
-                Some(Kind::Name)
-            }
-            _ => None,
+        if is("comment") {
+            Some(Kind::Comment)
+        } else if is("string") {
+            Some(Kind::String)
+        } else if is("constant.numeric") || is("constant.language") {
+            Some(Kind::Number)
+        } else if is("keyword") || is("storage") {
+            Some(Kind::Keyword)
+        } else if is("entity.name") || is("support.function") || is("support.type") {
+            Some(Kind::Name)
+        } else {
+            None
         }
     })
 }

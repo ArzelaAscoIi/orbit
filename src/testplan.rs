@@ -68,7 +68,7 @@ pub fn from_reply(text: &str) -> Option<TestPlan> {
         match parts.as_slice() {
             ["SUMMARY", summary, ..] => plan.summary = (*summary).to_owned(),
             ["URL", url, ..] => {
-                plan.url = Some((*url).to_owned()).filter(|u| !u.is_empty() && u != "-")
+                plan.url = Some((*url).to_owned()).filter(|u| !u.is_empty() && u != "-");
             }
             ["KIND", kind, ..] => {
                 plan.kind = if kind.eq_ignore_ascii_case("ui") {

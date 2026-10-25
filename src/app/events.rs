@@ -111,10 +111,10 @@ impl App {
                     use super::actions::Landing;
                     match next {
                         Some((Landing::Merge, head)) => {
-                            self.apply(Action::Merge { url, head }, ctx)
+                            self.apply(Action::Merge { url, head }, ctx);
                         }
                         Some((Landing::WhenReady, head)) => {
-                            self.apply(Action::AutoMerge { url, head }, ctx)
+                            self.apply(Action::AutoMerge { url, head }, ctx);
                         }
                         Some((Landing::Done, _)) => {
                             self.landing.remove(&url);
@@ -352,7 +352,7 @@ impl App {
                     {
                         Ok(_) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                         Err(error) => {
-                            self.update_error = Some(format!("Updated, reopen it: {error}"))
+                            self.update_error = Some(format!("Updated, reopen it: {error}"));
                         }
                     },
                     Err(error) => self.update_error = Some(error),
@@ -503,7 +503,7 @@ impl App {
             },
             // Quiet on failure: gh not signed in leaves the lane empty.
             Event::DependabotPrs(Ok(prs)) => {
-                story::take_dependencies(&mut self.pr_cards, &prs, self.selected.as_deref())
+                story::take_dependencies(&mut self.pr_cards, &prs, self.selected.as_deref());
             }
             Event::DependabotPrs(Err(_)) => {}
             Event::Herdr(result) => {

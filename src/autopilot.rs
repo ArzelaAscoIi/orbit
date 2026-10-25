@@ -62,9 +62,10 @@ pub fn failure_line(outcome: &Outcome, off: bool) -> String {
             "The board run waited an hour on a prompt; it was stopped.".to_owned()
         }
     };
-    match off {
-        true => format!("Autopilot is off after {FAILS} runs that did not finish. {what}"),
-        false => format!("Autopilot: {what} It did not count; the next run starts in an hour."),
+    if off {
+        format!("Autopilot is off after {FAILS} runs that did not finish. {what}")
+    } else {
+        format!("Autopilot: {what} It did not count; the next run starts in an hour.")
     }
 }
 
@@ -131,15 +132,16 @@ pub fn save(state: &Autopilot) -> std::io::Result<()> {
 
 /// Switched on: eight fresh runs, the first at once. Off: stays off.
 pub fn switch(on: bool) -> std::io::Result<Autopilot> {
-    let state = match on {
-        true => Autopilot {
+    let state = if on {
+        Autopilot {
             on: true,
             ..Default::default()
-        },
-        false => Autopilot {
+        }
+    } else {
+        Autopilot {
             on: false,
             ..load()
-        },
+        }
     };
     save(&state)?;
     Ok(state)
@@ -176,7 +178,7 @@ mod tests {
         assert!(!a.due(5 + EVERY_MS - 1));
         assert!(a.due(5 + EVERY_MS));
         for i in 2..=RUNS {
-            a.ran(i as u64 * EVERY_MS);
+            a.ran(u64::from(i) * EVERY_MS);
             a.settle(&Outcome::Finished);
         }
         assert_eq!(a.runs, RUNS);
@@ -202,7 +204,7 @@ mod tests {
             "a finished run resets the fails"
         );
         for i in 0..FAILS {
-            a.ran(3 + i as u64);
+            a.ran(3 + u64::from(i));
             a.settle(&Outcome::Stuck);
         }
         assert!(!a.on);

@@ -718,7 +718,7 @@ impl App {
             } => {
                 let drafts = self.drafts.get(&url).cloned().unwrap_or_default();
                 let empty = body.trim().is_empty();
-                if (changes && empty) || (empty && drafts.is_empty()) {
+                if empty && (changes || drafts.is_empty()) {
                     return;
                 }
                 if self.reviewing.insert(url.clone()) {
@@ -1169,7 +1169,7 @@ impl App {
                 None => {
                     self.error = Some(
                         "Run the board needs a profile with an orchestrator and its skill.".into(),
-                    )
+                    );
                 }
             },
             // The hourly pass: one operator session whose /loop runs the
@@ -1370,7 +1370,7 @@ impl App {
                         }
                     }
                     Err(error) => {
-                        self.error = Some(format!("could not save the initiative: {error}"))
+                        self.error = Some(format!("could not save the initiative: {error}"));
                     }
                 }
             }
@@ -1383,7 +1383,7 @@ impl App {
                 match crate::mission::stop(&key, crate::activity::now_ms() as u64) {
                     Ok(all) => self.missions = all,
                     Err(error) => {
-                        self.error = Some(format!("could not save the initiatives: {error}"))
+                        self.error = Some(format!("could not save the initiatives: {error}"));
                     }
                 }
             }
@@ -1550,7 +1550,7 @@ impl App {
                 self.claude.open(spec, ctx);
             }
             Action::Attach(key) if key.starts_with("sid:") => {
-                self.claude.attach_external(&key, ctx)
+                self.claude.attach_external(&key, ctx);
             }
             Action::Attach(key) if self.card(&key).is_none() => match self.spec_for(&key) {
                 Some(spec) => self.claude.open(spec, ctx),
@@ -1889,7 +1889,7 @@ impl App {
                     // Reaped when it exits, so it never lingers as a zombie.
                     Ok(mut child) => drop(std::thread::spawn(move || child.wait())),
                     Err(error) => {
-                        self.error = Some(format!("Could not open a new window: {error}"))
+                        self.error = Some(format!("Could not open a new window: {error}"));
                     }
                 }
             }
@@ -2113,7 +2113,7 @@ impl App {
             // The clone's own sessions (its chats, the hourly pass, a
             // mission) open in the clone panel, wherever they are clicked.
             Action::OpenSession(key) if self.is_clone_session(&key) => {
-                self.apply(Action::ChatShow(key), ctx)
+                self.apply(Action::ChatShow(key), ctx);
             }
             // A session from elsewhere working in a ticket's folder opens as
             // that ticket, the session on its Claude tab: never bare.
@@ -2126,7 +2126,7 @@ impl App {
             // A PR's session opens with the PR's tabs (walk, diff, Claude),
             // its card made again when the board does not hold it.
             Action::OpenSession(key) if self.card(&key).is_none() && self.pr_card_for(&key) => {
-                self.apply(Action::Claude(key), ctx)
+                self.apply(Action::Claude(key), ctx);
             }
             // A ticket's session shows with its ticket; any other session
             // (free, incident, orchestrator, spotter, profile) on its own.
@@ -2182,7 +2182,7 @@ impl App {
             // Plan my day and the goals run start over through their own
             // action, which builds the day's brief (date, teams, goals).
             Action::FreshSession(key) if key == claude::SPOTTER => {
-                self.apply(Action::SpotWork(None), ctx)
+                self.apply(Action::SpotWork(None), ctx);
             }
             Action::FreshSession(key) if key == claude::GOALS => self.apply(Action::FindGoals, ctx),
             Action::FreshSession(key) => {
@@ -2747,7 +2747,7 @@ impl App {
     }
 
     /// Changes one thing in `settings.json`, keeping the rest. Reads the
-    /// file rather than `self`, so teams from ORBIT_TEAMS never land
+    /// file rather than `self`, so teams from `ORBIT_TEAMS` never land
     /// in it by accident.
     pub(super) fn save_settings(&mut self, change: impl FnOnce(&mut Settings)) {
         let mut settings = store::load_settings();
@@ -3715,13 +3715,18 @@ impl Land {
 /// A PR the user's Land click covers, as its gate changed: queue it again
 /// at the head they saw, keep waiting, or let it go.
 pub(super) fn landing_next(gate: &crate::github::Gate, head: &str) -> Landing {
-    match () {
-        _ if gate.state != "OPEN" => Landing::Done,
-        _ if gate.head != head => Landing::Moved,
-        _ if gate.queued || gate.auto_merge => Landing::Wait,
-        _ if gate.green => Landing::Merge,
-        _ if gate.can_auto_merge => Landing::WhenReady,
-        _ => Landing::Wait,
+    if gate.state != "OPEN" {
+        Landing::Done
+    } else if gate.head != head {
+        Landing::Moved
+    } else if gate.queued || gate.auto_merge {
+        Landing::Wait
+    } else if gate.green {
+        Landing::Merge
+    } else if gate.can_auto_merge {
+        Landing::WhenReady
+    } else {
+        Landing::Wait
     }
 }
 
@@ -3738,14 +3743,20 @@ pub(super) enum Landing {
 fn land_step(gate: &crate::github::Gate, head: &str) -> Land {
     let red = matches!(gate.checks.as_str(), "FAILURE" | "ERROR")
         || matches!(gate.branch.as_str(), "BEHIND" | "DIRTY");
-    match () {
-        _ if gate.state != "OPEN" => Land::Merging,
-        _ if gate.head != head => Land::Skip("new commits since shown".into()),
-        _ if gate.queued || (gate.auto_merge && !red) => Land::Merging,
-        _ if gate.green => Land::Merge,
-        _ if gate.can_auto_merge => Land::WhenReady,
-        _ if crate::github::landable(gate) => Land::Goal,
-        _ => Land::Skip(gate.why.clone()),
+    if gate.state != "OPEN" {
+        Land::Merging
+    } else if gate.head != head {
+        Land::Skip("new commits since shown".into())
+    } else if gate.queued || (gate.auto_merge && !red) {
+        Land::Merging
+    } else if gate.green {
+        Land::Merge
+    } else if gate.can_auto_merge {
+        Land::WhenReady
+    } else if crate::github::landable(gate) {
+        Land::Goal
+    } else {
+        Land::Skip(gate.why.clone())
     }
 }
 

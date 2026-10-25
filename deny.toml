@@ -18,6 +18,11 @@ allow = [
     "ISC",
     "Zlib",
     "Unicode-3.0",
+    # Left out on purpose: Unlicense (its public-domain waiver does not hold
+    # in every country, e.g. Germany), BSD, BSL, 0BSD and the rest. Crates
+    # that offer one of them beside MIT or Apache-2.0 (memchr, aho-corasick,
+    # walkdir, jiff, ryu, self_cell) pass under MIT or Apache-2.0. Add a
+    # license here only when a needed crate offers nothing on this list.
 ]
 
 [licenses.private]

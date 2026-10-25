@@ -3,6 +3,8 @@
 Orbit is meant to be forked. It is one engineer's daily tool, made generic.
 The fastest way to get value from it is to make it your team's.
 
+<p align="center"><img src="../assets/fork-it@2x.png" alt="Orbit is a blueprint. Fork it, shape it with Cmd+Shift+F, stay current with make sync every Monday" width="900"></p>
+
 ## Why fork instead of configure
 
 Agents write code now. A setting covers what the author thought of; a fork

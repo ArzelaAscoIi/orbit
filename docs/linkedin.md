@@ -1,6 +1,6 @@
 # LinkedIn series: introducing Orbit
 
-Five posts that introduce Orbit one idea at a time. Each one stands alone,
+Four posts that introduce Orbit one idea at a time. Each one stands alone,
 links the repo, and sets up the next. The drafts are starting points: the
 shape and the hook are decided, the wording is not.
 
@@ -10,120 +10,97 @@ Repo link for every post: https://github.com/ArzelaAscoIi/orbit
 
 | # | Post | The one idea | Visual |
 |---|------|--------------|--------|
-| 1 | Your brain is the scheduler | Running agents is solved. Knowing what they should do, and who needs you, is not. | `chaos-vs-control@2x.png` |
-| 2 | Introducing Orbit | The backlog drives your agents. You review and decide. | `orbit-arch.png`, then `demo.gif` |
-| 3 | One window for every session | A drop-in for your terminal: every ticket, its session and its PR in one place. | `one-window.png` |
-| 4 | The clone | A Claude session that runs your other sessions. | `orbit-clone-overlay.gif`, `clone-works@2x.png` |
-| 5 | Fork it | Not built to fit everyone. Built to become yours. | `fork-it@2x.png` |
+| 1 | Connect everything, locally | Your work lives in cloud tools, your agents run on your Mac, and nothing connects them. Orbit does, on your machine. | `orbit-arch.png` (or `orbit-clone-overlay.gif`) |
+| 2 | One window for every session | A drop-in for your terminal: every ticket, its session and its PR in one place. | `chaos-vs-control@2x.png`, then `one-window.png` |
+| 3 | The clone | A Claude session that runs your other sessions. | `clone-works@2x.png`, `demo.gif` |
+| 4 | Fork it | Not built to fit everyone. Built to become yours. | `fork-it@2x.png` |
 
-Cadence: two a week (Tuesday and Thursday mornings), so the series runs
-under three weeks and each post can point back to the last one.
+Cadence: two a week (Tuesday and Thursday mornings), so the series runs two
+weeks and each post can point back to the last one.
 
-## Review of the original order
+## How the story builds
 
-The first plan was: 1. Orbit and its architecture, 2. the drop-in for all
-the Claude sessions, 3. the clone, 4. make it yours. What changed and why:
+1. **The big idea first: connect, locally.** Post 1 names the gap everyone
+   has but nobody draws: Linear, GitHub, alerts and cloud agents on one side,
+   your terminal, your Claude Code setup and your repos on the other. Orbit
+   is the local layer between them: no server, nothing to migrate, one index
+   that links a ticket, its PR and its session. It frames Orbit as
+   infrastructure for how you work, not as one more agent UI.
+2. **Then what it feels like.** Post 2 shows the payoff of that connection
+   on screen: the before (four terminals, your brain is the scheduler) and
+   the after (one window, the backlog is the scheduler). The before-and-after
+   is the hook that makes post 1's diagram concrete.
+3. **Then who runs it.** Post 3: once everything is connected and visible,
+   a Claude session can drive it for you. The clone only makes sense after
+   posts 1 and 2: it works through the same connections and the same window.
+4. **Then make it yours.** The call to action of the whole series goes last
+   and asks for something concrete: fork it, press Cmd+Shift+F, tell me what
+   you changed.
 
-- **Open with the pain, not the architecture.** An architecture diagram as
-  the first thing people see asks them to care before they know why. The
-  before-and-after image is the hook almost everyone running agents has
-  felt: four terminals, and no idea which one needs you. The architecture
-  comes second, as the answer.
-- **One idea per post.** "Orbit + architecture" was two ideas. Post 2 now
-  says what Orbit is in one sentence and uses the diagram and the demo GIF
-  as proof, not as the topic.
-- **Show, then name.** Post 3 leads with the screenshot of one window and
-  only then calls it a drop-in for the terminal. People recognise the
-  sidebar, the session and the PR before they read a feature list.
-- **The clone needs a contrast.** Post 4 builds on post 3: "you now see
-  every session; the clone watches them for you". Without post 3 the clone
-  reads like another agent framework.
-- **End with an invitation.** "Make it yours" is the call to action of the
-  whole series, so it goes last and asks for something concrete: fork it,
-  press Cmd+Shift+F, tell me what you changed.
-- **Same frame on every post:** a one-line hook, the problem in two or three
-  lines, what Orbit does about it, one visual, the repo link, a question.
-  Readers learn the format and skim faster.
+Same frame on every post: a one-line hook, the problem in two or three
+lines, what Orbit does about it, one visual, the repo link, a question.
+Readers learn the format and skim faster.
 
-## Post 1: Your brain is the scheduler
+## Post 1: Connect everything, locally
 
-Visual: `../assets/chaos-vs-control@2x.png` (BEFORE side cropped first, or
-the whole image).
+Visual: `../assets/orbit-arch.png`. The animated version,
+`../assets/orbit-clone-overlay.gif`, works as a second slide or as the video.
+
+<p align="center"><img src="../assets/orbit-arch.png" alt="Orbit sits between your cloud tools (Linear, GitHub, alerts, cloud agents) and your Mac: your terminal sessions, your setup, one local index" width="700"></p>
+
+> Draft
+>
+> My work lives in the cloud: tickets in Linear, PRs in GitHub, alerts in
+> incident.io, cloud agents building in the background.
+>
+> My agents live on my Mac: Claude Code sessions, my skills, my repos, my
+> worktrees.
+>
+> Nothing connects the two. So I was the glue: copying ticket links into
+> terminals, checking which PR belongs to which session.
+>
+> I built Orbit to be that glue, locally:
+> - it reads the cloud tools and writes back only what I did,
+> - every ticket gets its own agent session in its own git worktree,
+> - one local index links a ticket, its PR and its session.
+>
+> No server, nothing to migrate, my own keys. Open source, native Mac app.
+>
+> https://github.com/ArzelaAscoIi/orbit
+>
+> Where is the glue in your setup today?
+
+TBD: whether to say "open source" here or save it for post 4.
+
+## Post 2: One window for every session
+
+Visual: `../assets/chaos-vs-control@2x.png` first, `../assets/one-window.png`
+as the second slide.
 
 <p align="center"><img src="../assets/chaos-vs-control@2x.png" alt="Before: four terminals, your brain is the scheduler. After: one window, the backlog is the scheduler" width="700"></p>
 
 > Draft
 >
-> I run five Claude Code sessions at once. That part is easy now.
+> Connected tools are only half of it. You still have to see what is going
+> on.
 >
-> The hard part: which one is waiting for me? What was this one about?
-> Is this PR the thing the ticket asked for?
+> Before: four terminals. Which one is waiting for me? What was this one
+> about? My brain was the scheduler, and every switch cost focus.
 >
-> Four terminals, and my brain is the scheduler. Every switch costs focus,
-> and the context lives in my head.
->
-> So I built the tool I wanted instead: one window where the backlog is the
-> scheduler. More on Thursday.
->
-> How many agent sessions do you run at once, and how do you keep track?
-
-TBD: whether to name the tool in post 1 or keep it a teaser.
-
-## Post 2: Introducing Orbit
-
-Visual: `../assets/orbit-arch.png` first, `demo.gif` as the second slide or a
-comment.
-
-<p align="center"><img src="../assets/orbit-arch.png" alt="Orbit between your cloud tools and your Mac" width="700"></p>
-
-> Draft
->
-> Agent tools give you more terminals. Orbit gives your agents a backlog.
->
-> Orbit is a native Mac app (Rust, open source) that sits between the tools
-> your team already uses (Linear, GitHub, alerts, cloud agents) and the
-> agents on your machine (Claude Code, Codex, pi).
->
-> - Every ticket gets its own agent session in its own git worktree.
-> - Every ticket shows the one move it needs: review, fix, merge, verify.
-> - Every PR comes back as a walkthrough you can question line by line.
->
-> No server, nothing to migrate, your own keys. You make the calls:
-> approve, merge, ship.
->
-> https://github.com/ArzelaAscoIi/orbit
-
-TBD: one line on who it is for (product engineers who run several agents).
-
-## Post 3: One window for every session
-
-Visual: `../assets/one-window.png`.
-
-<p align="center"><img src="../assets/one-window.png" alt="Orbit: tickets with their next move on the left, the ticket's Claude Code session in the middle" width="700"></p>
-
-> Draft
->
-> This is what replaced my terminal tabs.
->
-> Left: every ticket I am on, with the one move it needs (fix comments,
-> merge, verify, approve) and which agent is working.
-> Middle: that ticket's Claude Code session, the real one, with everything
-> it did.
->
-> Orbit starts each session with hooks, so "your turn" means Claude asked
-> or finished, not a guess. One click and I am in the session that needs me,
-> with the ticket and the PR next to it.
+> After: one window. Left, every ticket I am on with the one move it needs
+> (fix comments, merge, verify, approve). Middle, that ticket's real Claude
+> Code session. "Your turn" comes from the session's own hooks, not a guess.
 >
 > It is a drop-in for the terminal: your Claude Code, your skills, your
 > settings, unchanged.
 >
-> What would you need to see in that sidebar?
+> How many agent sessions do you run at once, and how do you keep track?
 
-TBD: a short screen recording instead of the still.
+TBD: a short screen recording instead of the second still.
 
-## Post 4: The clone
+## Post 3: The clone
 
-Visual: `../assets/orbit-clone-overlay.gif`, then `../assets/clone-works@2x.png`.
+Visual: `../assets/clone-works@2x.png`, `demo.gif` as the video.
 
 <p align="center"><img src="../assets/clone-works@2x.png" alt="The clone is a Claude session that runs your other sessions" width="700"></p>
 
@@ -150,7 +127,7 @@ Visual: `../assets/orbit-clone-overlay.gif`, then `../assets/clone-works@2x.png`
 
 TBD: a 20 second clip of the clone filing a mission.
 
-## Post 5: Fork it
+## Post 4: Fork it
 
 Visual: `../assets/fork-it@2x.png`.
 
@@ -178,6 +155,7 @@ TBD: a real example of a change made with Cmd+Shift+F, with its PR.
 
 ## Before posting
 
-- Check every visual for real names, tickets or paths.
+- Check every visual for real names, tickets or paths. The BEFORE half of
+  `chaos-vs-control@2x.png` shows a company name and a home path.
 - Post the repo link in the post itself, not only in a comment.
 - Pin the series' first post to the profile while it runs.

@@ -704,13 +704,16 @@ impl App {
         self.read_notes();
         self.settle(request);
         self.rebuild();
+        let first_load = self.loaded_at.is_none();
         self.loaded_at = Some(jiff::Timestamp::now().to_string());
         self.run_helpers();
         self.error = None;
-        // The triage window stays without a ticket, a session's window (an
-        // alert's, a free one) shows its session, and a shell window has no
-        // ticket pane to show one in.
-        if self.selected.is_none()
+        // The first load shows a ticket; later refreshes leave an empty tab
+        // (Cmd+N) empty. The triage window stays without a ticket, a
+        // session's window (an alert's, a free one) shows its session, and a
+        // shell window has no ticket pane to show one in.
+        if first_load
+            && self.selected.is_none()
             && self.session.is_none()
             && self.tab != Tab::Triage
             && self.panes.ticket_active()

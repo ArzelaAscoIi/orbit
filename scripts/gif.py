@@ -1,7 +1,7 @@
 """Joins PNG frames into an optimized GIF: python3 scripts/gif.py out.gif a.png b.png ...
 
-Every frame shares one palette, so the GIF stays small and the colours hold
-from frame to frame. Needs Pillow. WIDTH and SECONDS tune size and pace.
+Every frame gets its own octree palette, so small colours (syntax
+highlighting) survive. Needs Pillow. WIDTH and SECONDS tune size and pace.
 """
 
 import os
@@ -19,14 +19,9 @@ def main(out, paths):
         image = Image.open(path).convert("RGB")
         height = round(image.height * WIDTH / image.width)
         frames.append(image.resize((WIDTH, height), Image.LANCZOS))
-    # One palette from all frames side by side.
-    strip = Image.new("RGB", (WIDTH, sum(f.height for f in frames)))
-    y = 0
-    for frame in frames:
-        strip.paste(frame, (0, y))
-        y += frame.height
-    palette = strip.quantize(colors=256, method=Image.Quantize.MEDIANCUT)
-    quantized = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f in frames]
+    # A palette per frame, by octree: median cut on one shared palette drops
+    # the small syntax colours of a diff for the big dark grounds.
+    quantized = [f.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE) for f in frames]
     quantized[0].save(
         out,
         save_all=True,

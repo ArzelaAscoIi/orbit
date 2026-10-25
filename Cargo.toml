@@ -2,7 +2,7 @@
 name = "orbit"
 version = "0.0.12"
 edition = "2024"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 description = "A native Linear client that follows your team's bot, with Claude Code per ticket"
 repository = "https://github.com/ArzelaAscoIi/orbit"
 

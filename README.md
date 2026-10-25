@@ -19,7 +19,7 @@
 <p align="center">
   <a href="https://github.com/ArzelaAscoIi/orbit/actions/workflows/ci.yml"><img src="https://github.com/ArzelaAscoIi/orbit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/ArzelaAscoIi/orbit/releases/latest"><img src="https://img.shields.io/github/v/release/ArzelaAscoIi/orbit?include_prereleases&label=release&labelColor=333333&color=666666" alt="latest release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-666666?labelColor=333333" alt="MIT license"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-666666?labelColor=333333" alt="MIT or Apache-2.0 license"></a>
   <img src="https://img.shields.io/badge/macOS-native%20Rust-666666?labelColor=333333" alt="native Rust, macOS">
   <img src="https://img.shields.io/badge/agents-Claude%20Code%20%7C%20Codex%20%7C%20pi-666666?labelColor=333333" alt="Claude Code, Codex and pi">
 </p>
@@ -224,7 +224,15 @@ make check    # fmt + clippy + tests
 
 ## License
 
-MIT. Built with Claude Code, for people who build with Claude Code.
+Either of, at your option:
+
+- MIT ([LICENSE-MIT](LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+
+Unless you say otherwise, any contribution you submit for inclusion in Orbit
+is licensed the same way, without any additional terms.
+
+Built with Claude Code, for people who build with Claude Code.
 
 Third-party licenses ship in `Orbit.app/Contents/Resources/THIRD_PARTY_LICENSES.html`; CI fails on a dependency outside [deny.toml](deny.toml)'s list (MIT, Apache-2.0, ISC, Zlib, Unicode-3.0).
 

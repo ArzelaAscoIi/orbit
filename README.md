@@ -32,6 +32,29 @@
 
 <p align="center"><sub>Left: every ticket with its state and next move (fix comments, approve, merge). Middle: its Claude session. Right: the clone, driving a goal of many tickets.</sub></p>
 
+## How it fits together
+
+Orbit is a native Rust app on your Mac. There is no Orbit server and nothing to
+migrate: it talks to the tools your team already uses, with your own keys and
+logins, and keeps everything else on your machine.
+
+- **Cloud tools, read and written in place.** Linear holds tickets and their
+  state, GitHub holds PRs, reviews and CI, incident.io holds alerts and on-call,
+  and cloud agents plan, build and open PRs. Orbit keeps them fresh in the
+  background and writes back only what you did: a state change, a comment, an
+  approve or a merge on your click.
+- **Your terminal, with live status.** Each ticket gets its own Claude Code,
+  Codex or pi session in a terminal pane. Orbit starts every session with hooks
+  that report what it is doing, so you see who is working, who is asking you
+  and who is done, and step into the one that needs you.
+- **Your setup, carried over.** Each session runs in its own git worktree on
+  the ticket's branch. Orbit actions (Fix CI, Plan, Build, Review) dispatch a
+  session that runs your skills, with your plugins, MCP servers and Claude Code
+  settings as they are. Your team's workflow lives in a profile, not in the code.
+- **One local index.** A ticket, its PR and its session share one id. Cmd+K
+  finds any of them from a word you remember, and the other two are one click
+  away.
+
 <p align="center"><img src="assets/orbit-arch.png" alt="Orbit sits between your cloud tools (Linear, GitHub, alerts, cloud agents) and your Mac: your terminal sessions, your setup, one local index" width="900"></p>
 
 Agent tools give you more terminals. **Orbit gives your agents a backlog.**

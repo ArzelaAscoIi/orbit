@@ -131,6 +131,7 @@ pub const GATES: &[(&str, Gate)] = &[
     ("InvestigateAlert", Gate::Do),
     ("FixRelease", Gate::Do),
     ("Debug", Gate::Do),
+    ("LocalUi", Gate::Do),
     ("ReadNote", Gate::Do),
     ("FixNote", Gate::Do),
     ("NewTicket", Gate::Do),

@@ -342,3 +342,4 @@
 2026-10-24 · licenses · Orbit ships no fonts and no copyleft code: theme.rs reads Ge => test:the_macs_fonts_cover_every_glyph_orbit_draws; code:src/theme.rs:system_fonts(&font_dirs())
 2026-10-25 · sign-in · Linear is optional: "Continue without Linear" on the sign-in => test:without_linear_only_linear_commands_are_dropped; test:ticket_views_need_linear_and_the_rest_do_not; test:running_without_linear_is_remembered_in_settings; code:src/ui/login.rs:Continue without Linear
 2026-10-25 · find · Find on the screen (Cmd+F) always has a way out: a × in its => test:find_closes_from_its_field_its_key_or_nothing_focused_never_a_terminal; code:src/ui/find.rs:.on_hover_text("Close (Esc)")
+2026-10-29 · testing · The Testing tab runs a PR's UI locally before any preview: r => test:a_local_ui_is_found_by_slug_or_name_and_checks_the_pr_out_first; code:src/ui/testing.rs:Run #{} locally

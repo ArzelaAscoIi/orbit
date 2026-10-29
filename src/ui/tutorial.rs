@@ -867,6 +867,15 @@ pub const STEPS: &[Step] = &[
          one says it is not ready, a ready one opens the plan's page on the preview.",
     ),
     step(
+        Some("local-ui"),
+        None,
+        "Test locally",
+        "Repos named in settings.json localUi get a local choice above the browser, picked \
+         first: Run locally checks the PR out in its own clone and starts the UI in a shell \
+         pane, and the browser opens its local address. No waiting for a preview; one runs \
+         per repo, so another PR's Run replaces it.",
+    ),
+    step(
         Some("description"),
         None,
         "The ticket",

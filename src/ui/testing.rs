@@ -161,7 +161,24 @@ fn preview_of<'a>(app: &App, card: &'a Card) -> Option<(&'a story::Pr, Option<St
     Some((pr, url))
 }
 
-/// Dev or the PR's preview, while there is one to pick; then back, reload,
+/// The ticket's open PR in a repo settings.json `localUi` runs here, its
+/// `owner/repo`, and how.
+fn local_of<'a>(
+    app: &'a App,
+    card: &'a Card,
+) -> Option<(&'a story::Pr, String, &'a crate::store::LocalUi)> {
+    card.prs.iter().find_map(|pr| {
+        let slug = format!("{}/{}", pr.owner, pr.repo);
+        let open = matches!(
+            app.pr_state(pr),
+            story::PrState::Open | story::PrState::Draft
+        );
+        let local = crate::store::LocalUi::of(&app.settings.local_ui, &slug).filter(|_| open)?;
+        Some((pr, slug, local))
+    })
+}
+
+/// Local, dev or the PR's preview, while there is more than one to pick; then back, reload,
 /// the address, and the page itself.
 fn browser_pane(
     app: &App,
@@ -172,9 +189,10 @@ fn browser_pane(
 ) {
     let dev = app.settings.test_app_url.trim();
     let preview = preview_of(app, card);
-    // No test app named (settings.json testAppUrl) and no preview: nothing
-    // to browse.
-    if dev.is_empty() && preview.is_none() {
+    let local = local_of(app, card);
+    // No test app named (settings.json testAppUrl), no local UI and no
+    // preview: nothing to browse.
+    if dev.is_empty() && preview.is_none() && local.is_none() {
         section(ui, "browser");
         let hint =
             label("set a test app URL in Settings (bot & PRs) to click UI plans through here");
@@ -183,22 +201,75 @@ fn browser_pane(
         }
         return;
     }
-    // The preview once it is up, dev until then; the user's pick wins.
-    let key = egui::Id::unique(("test-on-preview", &card.issue.id));
+    // Local first (no waiting on a deploy), else the preview once it is
+    // up, else dev; the user's pick wins.
+    let key = egui::Id::unique(("test-on", &card.issue.id));
     let ready = preview.as_ref().is_some_and(|(_, url)| url.is_some());
-    let on_preview = preview.is_some()
-        && (dev.is_empty() || ui.data(|d| d.get_temp::<bool>(key)).unwrap_or(ready));
-    if let Some((pr, url)) = &preview {
+    let offered = |on: &str| match on {
+        "local" => local.is_some(),
+        "dev" => !dev.is_empty(),
+        _ => preview.is_some(),
+    };
+    let fallback = if local.is_some() {
+        "local"
+    } else if preview.is_some() && (ready || dev.is_empty()) {
+        "preview"
+    } else {
+        "dev"
+    };
+    let on: &'static str = ui
+        .data(|d| d.get_temp::<&'static str>(key))
+        .filter(|on| offered(on))
+        .unwrap_or(fallback);
+    let choices = [
+        ("local", "local"),
+        ("dev", "dev"),
+        ("preview", "PR preview"),
+    ];
+    if choices.iter().filter(|(c, _)| offered(c)).count() > 1 {
         ui.horizontal(|ui| {
             ui.label(label("// test on"));
-            if !dev.is_empty() && ui.selectable_label(!on_preview, "dev").clicked() {
-                ui.data_mut(|d| d.insert_temp(key, false));
-            }
-            if ui.selectable_label(on_preview, "PR preview").clicked() {
-                ui.data_mut(|d| d.insert_temp(key, true));
+            for (choice, text) in choices {
+                if offered(choice) && ui.selectable_label(on == choice, text).clicked() {
+                    ui.data_mut(|d| d.insert_temp(key, choice));
+                }
             }
         });
-        if on_preview && url.is_none() {
+    }
+    if on == "local"
+        && let Some((pr, slug, local)) = &local
+    {
+        let running = app
+            .local_ui
+            .get(slug)
+            .filter(|(pane, _)| app.shells.contains_key(pane))
+            .map(|(_, number)| *number);
+        ui.horizontal(|ui| {
+            let r = if running == Some(pr.number) {
+                ui.label(label(&format!("running #{} at {}", pr.number, local.url)));
+                ui.small_button("Restart")
+            } else {
+                primary(ui, &format!("Run #{} locally", pr.number))
+            };
+            mark(app, ui, "local-ui", r.rect);
+            if r.on_hover_text(format!("checks the PR out and runs: {}", local.run))
+                .clicked()
+            {
+                actions.push(Action::LocalUi(slug.clone(), pr.number));
+            }
+        });
+        if running != Some(pr.number) {
+            ui.label(label(
+                "a shell pane checks the PR out and starts the UI; reload once it is up",
+            ));
+            return;
+        }
+        ui.add_space(4.0);
+    }
+    if on == "preview"
+        && let Some((pr, url)) = &preview
+    {
+        if url.is_none() {
             let asked = crate::profile::get()
                 .github
                 .preview
@@ -217,7 +288,7 @@ fn browser_pane(
                     );
                 });
                 ui.label(label(
-                    "it opens here once the PR says where it runs; pick dev to test there meanwhile",
+                    "it opens here once the PR says where it runs; pick local or dev meanwhile",
                 ));
             } else {
                 ui.label(RichText::new("This PR has no preview yet.").color(p().text_2));
@@ -227,8 +298,9 @@ fn browser_pane(
         }
         ui.add_space(4.0);
     }
-    let base = match &preview {
-        Some((_, Some(url))) if on_preview => url.as_str(),
+    let base = match (on, &preview, &local) {
+        ("preview", Some((_, Some(url))), _) => url.as_str(),
+        ("local", _, Some((_, _, l))) => l.url.as_str(),
         _ => dev,
     };
     if !crate::browser::available() {

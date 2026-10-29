@@ -503,6 +503,9 @@ pub enum Action {
     /// Debugging an environment (`prod`, `dev`): k9s and Claude Code side
     /// by side; k9s after `assume <env>`, Claude started plain.
     Debug(String),
+    /// Run the repo's UI here from PR `number` (settings.json `localUi`):
+    /// a shell pane checks it out and starts it; a running one is replaced.
+    LocalUi(String, u64),
     ZoomPane,
     /// The focused pane alone, window full screen: no sidebar, bar or clone panel.
     FullScreen,
@@ -837,6 +840,8 @@ pub struct App {
     /// What a shell pane is for, for its header ("k9s · prod"); plain
     /// shells have none.
     pub shell_titles: HashMap<u64, String>,
+    /// The local UI shell per repo (`owner/repo` → pane, PR number).
+    pub local_ui: HashMap<String, (u64, u64)>,
     /// What Claude Code started by hand in a shell pane is doing, read off
     /// its screen (no hooks there): the sidebar's state for that pane.
     pub shell_states: HashMap<u64, &'static str>,
@@ -1198,6 +1203,7 @@ impl App {
             shells: HashMap::new(),
             editors: HashMap::new(),
             shell_titles: HashMap::new(),
+            local_ui: HashMap::new(),
             shell_states: HashMap::new(),
             shell_trusted: None,
             anthropic_key: Some(

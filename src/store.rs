@@ -2,7 +2,7 @@
 //! the hash that says whether a cached result still matches its source.
 
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// `ORBIT_<name>`, else `CONTROL_ROOM_<name>`: the app's old name, so a
 /// setup made before the rename keeps working.
@@ -150,6 +150,10 @@ pub struct Settings {
     pub profile_skills: Option<Vec<String>>,
     /// Where UI test plans open (the Testing tab's browser).
     pub test_app_url: String,
+    /// Repos whose UI the Testing tab runs on this Mac from the PR's branch,
+    /// before any preview is up: `[{"repo": "acme/web", "run": "npm i &&
+    /// npm run dev", "url": "http://localhost:3000"}]`. Empty: no "local".
+    pub local_ui: Vec<LocalUi>,
     /// The GitHub Actions workflows that release to prod (repo + workflow),
     /// each with its latest run on the Alerts view (releases.rs).
     pub releases: Vec<crate::releases::Release>,
@@ -333,6 +337,41 @@ impl DebugEnv {
     }
 }
 
+/// A repo's UI run locally (settings.json `localUi`): one clone per repo
+/// under `<data>/local-ui`, the PR checked out there, then `run` in a
+/// shell pane; the Testing tab's browser opens `url`.
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct LocalUi {
+    /// `owner/repo`, or the repo's name alone.
+    pub repo: String,
+    /// What starts the UI, run in the clone's top folder (e.g.
+    /// `cd ui && npm install && npm run dev`).
+    pub run: String,
+    /// Where the running UI answers, e.g. `http://localhost:3000`.
+    pub url: String,
+}
+
+impl LocalUi {
+    /// The one for `owner/repo`, if the settings name it.
+    pub fn of<'a>(all: &'a [LocalUi], slug: &str) -> Option<&'a LocalUi> {
+        let name = slug.rsplit('/').next().unwrap_or(slug);
+        all.iter()
+            .find(|l| !l.run.trim().is_empty() && (l.repo == slug || l.repo == name))
+    }
+
+    /// What the pane types: clone once, check the PR out (reset to its
+    /// head: the folder is only for this), then run.
+    pub fn command(&self, dir: &Path, slug: &str, number: u64) -> String {
+        let d = crate::claude::status::quote(dir);
+        let slug = crate::claude::status::quote(Path::new(slug));
+        format!(
+            "{{ [ -d {d}/.git ] || gh repo clone {slug} {d}; }} && cd {d} && gh pr checkout {number} --force && {}",
+            self.run.trim()
+        )
+    }
+}
+
 /// A file the app follows: `changed` says whether its time changed since
 /// the last look, looking at most every `every`. True on the first look.
 #[derive(Debug, Default)]
@@ -452,6 +491,22 @@ mod tests {
     /// in, and a field without a sentence is one nobody can set with
     /// confidence (herdr diffs its config keys against its reference the
     /// same way).
+    #[test]
+    fn a_local_ui_is_found_by_slug_or_name_and_checks_the_pr_out_first() {
+        let all = vec![LocalUi {
+            repo: "web".into(),
+            run: "npm run dev".into(),
+            url: "http://localhost:3000".into(),
+        }];
+        assert!(LocalUi::of(&all, "acme/web").is_some());
+        assert!(LocalUi::of(&all, "acme/api").is_none());
+        let cmd = all[0].command(Path::new("/d/acme/web"), "acme/web", 7);
+        assert_eq!(
+            cmd,
+            "{ [ -d '/d/acme/web'/.git ] || gh repo clone 'acme/web' '/d/acme/web'; } && cd '/d/acme/web' && gh pr checkout 7 --force && npm run dev"
+        );
+    }
+
     #[test]
     fn every_settings_field_has_a_doc_comment() {
         let source = include_str!("store.rs");

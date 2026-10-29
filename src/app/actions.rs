@@ -1893,6 +1893,30 @@ impl App {
                     }
                 }
             }
+            Action::LocalUi(slug, number) => {
+                let Some(local) = store::LocalUi::of(&self.settings.local_ui, &slug).cloned()
+                else {
+                    return;
+                };
+                // One dev server per repo: the last PR's goes first.
+                if let Some((pane, _)) = self.local_ui.remove(&slug)
+                    && self.shells.contains_key(&pane)
+                {
+                    self.apply(Action::ClosePane(Some(pane)), ctx);
+                }
+                let dir = store::data_dir().join("local-ui").join(&slug);
+                match claude::Terminal::shell(ctx) {
+                    Ok(mut terminal) => {
+                        terminal.type_line(&local.command(&dir, &slug, number));
+                        let pane = self.panes.split(true, panes::Surface::Shell);
+                        self.shells.insert(pane, terminal);
+                        self.shell_titles
+                            .insert(pane, format!("local ui · {slug} #{number}"));
+                        self.local_ui.insert(slug, (pane, number));
+                    }
+                    Err(error) => self.error = Some(format!("Could not start a shell: {error:#}")),
+                }
+            }
             Action::Debug(name) => {
                 let Some(env) = self.settings.debug.iter().find(|e| e.name == name).cloned() else {
                     return;

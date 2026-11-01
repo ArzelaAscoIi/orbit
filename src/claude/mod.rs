@@ -525,17 +525,23 @@ impl Sessions {
             Some(hint) => format!("{}\n\n{hint}", spec.context),
             None => spec.context.clone(),
         };
-        let mut args = vec![
+        // The tool lists first, as `--bg` has them: a ticket's session may
+        // commit and push without asking here too.
+        let mut args = Vec::new();
+        if !spec.allow.is_empty() {
+            args.extend(["--allowedTools".into(), spec.allow.join(",")]);
+        }
+        if !spec.deny.is_empty() {
+            args.extend(["--disallowedTools".into(), spec.deny.join(",")]);
+        }
+        args.extend([
             "--settings".to_owned(),
             status::settings(&status::path(&spec.key))?,
             "--name".into(),
             format!("{} {}", spec.identifier, spec.title),
             "--append-system-prompt".into(),
             context,
-        ];
-        if !spec.deny.is_empty() {
-            args.extend(["--disallowedTools".into(), spec.deny.join(",")]);
-        }
+        ]);
         args.extend(model_args(spec));
         if let Some(prompt) = &spec.prompt {
             args.push(prompt.clone());

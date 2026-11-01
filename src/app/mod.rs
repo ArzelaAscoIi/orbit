@@ -2457,6 +2457,12 @@ impl App {
                 };
                 (view.tab == Tab::Claude).then_some(view.session.or(view.selected))?
             })
+            // The clone panel shows a session too: read there, it is seen.
+            .chain(
+                self.chat
+                    .clone()
+                    .filter(|k| self.chat_open && self.session_in_window(k).is_none()),
+            )
             .filter(|key| self.claude.attached.contains_key(key))
             .collect();
         for key in keys {

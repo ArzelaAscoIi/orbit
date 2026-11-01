@@ -160,7 +160,15 @@ fn write(map: &BTreeMap<String, String>) -> keyring::Result<()> {
             other => other,
         };
     }
-    entry.set_password(&serde_json::to_string(map).unwrap_or_default())
+    let json = serde_json::to_string(map).unwrap_or_default();
+    match entry.set_password(&json) {
+        // An item this build cannot update ("already exists"): replaced.
+        Err(keyring::Error::PlatformFailure(_)) => {
+            let _ = entry.delete_credential();
+            entry.set_password(&json)
+        }
+        other => other,
+    }
 }
 
 /// After a rename: the entry the app kept under an earlier name, copied

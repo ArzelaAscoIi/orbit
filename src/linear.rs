@@ -979,7 +979,10 @@ impl Client {
         match write {
             Write::Comment { issue, body } => {
                 let (id, identifier) = self.ticket(issue).await?;
-                self.add_comment(&id, body).await?;
+                // Sent from Orbit: signed as the user's replies are
+                // (`check` already refused a bot command, which never is).
+                let body = crate::profile::get().attribution.signed(body);
+                self.add_comment(&id, &body).await?;
                 Ok(format!("commented on {identifier}"))
             }
             Write::Move { issue, state } => {

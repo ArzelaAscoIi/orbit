@@ -2067,7 +2067,7 @@ fn plan_step(card: &Card) -> (&'static str, String, String, bool) {
     let plan = crate::profile::get().skill("plan");
     (
         "✳ Plan",
-        format!("Runs /{plan} locally and posts the plan after you approve it"),
+        format!("Runs /{plan} locally and posts the plan to the ticket"),
         format!("/{plan} {}", card.issue.identifier),
         true,
     )

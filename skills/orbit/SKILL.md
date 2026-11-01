@@ -1,6 +1,6 @@
 ---
 name: orbit
-description: "You run inside Orbit, the desktop app that shows this session's row to the user. Use this to put a one-line summary of what you are on next to your session, and to say what you wait for when the hooks cannot. Only inside an Orbit session (the brief has an Orbit section, or ORBIT_STATUS_LOG is set)."
+description: "You run inside Orbit, the desktop app that shows this session's row to the user. Use this to put a one-line summary of what you are on next to your session, and to say what you wait for when the hooks cannot. Only inside an Orbit session (the brief has an Orbit section)."
 ---
 
 # Reporting to Orbit
@@ -18,14 +18,11 @@ The brief's **Orbit** section names the exact command, binary and log included:
 '<orbit>' report '<log>' note "Writing the parser for the status log"
 ```
 
-Inside this session's shells the same is reachable through the environment:
+Use that command, never `$ORBIT_STATUS_LOG` from the environment: a
+background session can inherit an earlier session's environment, and its
+notes would land on that session's row.
 
-```sh
-"$ORBIT_BIN" report "$ORBIT_STATUS_LOG" note "Running the tests"
-```
-
-If neither the brief has an Orbit section nor `ORBIT_STATUS_LOG` is set, you
-are not inside Orbit: do nothing.
+If the brief has no Orbit section, you are not inside Orbit: do nothing.
 
 ## What to report
 

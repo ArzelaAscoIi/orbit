@@ -49,6 +49,7 @@ impl App {
             && key != claude::TRIAGE
             && !self.is_clone_session(key)
             && self.ticket_of_session(key).is_none()
+            && !self.in_terminal_app(key)
         {
             self.session_window(key);
         }
@@ -937,7 +938,13 @@ impl App {
                 self.kick_bot();
                 if self.kicked_at.is_some() {
                     let bot = crate::profile::get().bot_name("the bot").to_owned();
-                    self.agent_says(&format!("{bot}: break is over, WORK!"));
+                    // Every press says so, not only the first (agent_says
+                    // drops a line equal to the last one).
+                    let now = crate::activity::now_ms();
+                    self.agent_tells(
+                        &format!("{bot}: break is over, WORK!"),
+                        &format!("agent:{now}"),
+                    );
                 }
             }
             Action::NewTicket => {
@@ -2165,13 +2172,7 @@ impl App {
             }
             // A terminal elsewhere cannot be attached: its app comes to the
             // front instead of a tab that only says so.
-            Action::OpenSession(key)
-                if key.strip_prefix("sid:").is_some_and(|sid| {
-                    self.claude
-                        .rows
-                        .get(sid)
-                        .is_some_and(|row| row.kind == "interactive" && claude::show_host(row))
-                }) => {}
+            Action::OpenSession(key) if self.in_terminal_app(&key) => {}
             Action::OpenSession(key) if key.starts_with("sid:") => {
                 self.session = Some(key.clone());
                 self.tab = Tab::Claude;
@@ -3334,6 +3335,17 @@ impl App {
     }
 
     /// A line from the clone about something to open: its toast opens it.
+    /// A session running in a terminal app elsewhere: a click brings that
+    /// app to the front (`show_host` does), no window or tab here.
+    fn in_terminal_app(&self, key: &str) -> bool {
+        key.strip_prefix("sid:").is_some_and(|sid| {
+            self.claude
+                .rows
+                .get(sid)
+                .is_some_and(|row| row.kind == "interactive" && claude::show_host(row))
+        })
+    }
+
     pub(super) fn agent_tells(&mut self, line: &str, key: &str) {
         let line = format!("agent · {line}");
         self.toasts.push(super::Toast {

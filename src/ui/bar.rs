@@ -183,7 +183,15 @@ pub(super) fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
     // keep their keys; a terminal under the sheet gives them up.
     let field = egui::Id::unique(SEARCH);
     match ui.ctx().memory(|m| m.focused()) {
-        Some(id) if id == field || id == super::find::field_id() => return,
+        // Enter in the search opens the line the cursor is on: the field
+        // only lets go of focus on it, so the list never sees that Enter.
+        Some(id) if id == field => {
+            if ui.input(|i| i.key_pressed(Key::Enter)) {
+                actions.extend(open(false));
+            }
+            return;
+        }
+        Some(id) if id == super::find::field_id() => return,
         Some(_) => ui.ctx().memory_mut(|m| m.stop_text_input()),
         None => {}
     }

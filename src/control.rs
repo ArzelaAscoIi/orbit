@@ -228,11 +228,11 @@ pub fn main(args: &[String]) -> i32 {
             "parent": parent,
             "parallel": arg(2).and_then(|n| n.parse::<usize>().ok()).unwrap_or(2),
             "initiative": arg(3),
-            "session": std::env::var("ORBIT_SESSION_KEY").ok(),
+            "session": caller(),
         }}}),
         (Some("follow"), Some(parent)) => json!({"cmd": "do", "action": {"Drive": {
             "parent": parent, "parallel": 1, "local": true,
-            "session": std::env::var("ORBIT_SESSION_KEY").ok(),
+            "session": caller(),
         }}}),
         (Some("instruct"), Some(_)) => {
             json!({"cmd": "do", "action": {"Instruct": args[1..].join(" ")}})
@@ -280,6 +280,28 @@ fn write_of(args: &[String]) -> Option<crate::linear::Write> {
         },
         _ => return None,
     })
+}
+
+/// The Orbit session this `orbit ctl` runs in. Claude Code's own session id
+/// first: a `claude --bg` session is handed to a pre-started spare process
+/// whose environment is an earlier session's, so its `ORBIT_SESSION_KEY`
+/// can name another session (a mission then opens that one).
+fn caller() -> Option<String> {
+    let saved: std::collections::BTreeMap<String, crate::claude::Saved> =
+        crate::store::load_at(&crate::store::data_dir().join("sessions.json"));
+    let id = std::env::var("CLAUDE_CODE_SESSION_ID").ok();
+    caller_in(&saved, id.as_deref()).or_else(|| std::env::var("ORBIT_SESSION_KEY").ok())
+}
+
+fn caller_in(
+    saved: &std::collections::BTreeMap<String, crate::claude::Saved>,
+    id: Option<&str>,
+) -> Option<String> {
+    let id = id.filter(|id| !id.is_empty())?;
+    saved
+        .iter()
+        .find(|(_, s)| s.session_id == id)
+        .map(|(key, _)| key.clone())
 }
 
 fn print_answer(answer: Result<Value, String>) -> i32 {
@@ -415,6 +437,22 @@ pub fn actions() -> Vec<(String, String, String)> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn the_caller_is_the_session_claude_code_runs_not_a_stale_environment() {
+        let saved: std::collections::BTreeMap<String, crate::claude::Saved> =
+            serde_json::from_value(serde_json::json!({
+                "release:1": {"identifier": "Session", "session_id": "aaaa", "cwd": "/w/r", "started_at": ""},
+                "free:2": {"identifier": "Session", "session_id": "bbbb", "cwd": "/w/f", "started_at": ""},
+            }))
+            .unwrap();
+        assert_eq!(
+            super::caller_in(&saved, Some("bbbb")).as_deref(),
+            Some("free:2")
+        );
+        assert_eq!(super::caller_in(&saved, Some("cccc")), None);
+        assert_eq!(super::caller_in(&saved, None), None);
+    }
+
     #[test]
     fn a_request_line_is_cut_at_64_kib() {
         let long = "x".repeat(200 * 1024);

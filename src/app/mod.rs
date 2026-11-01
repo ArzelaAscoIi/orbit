@@ -382,7 +382,7 @@ pub enum Action {
         /// bot, Orbit only follows and lists each sub-ticket's step.
         #[serde(default)]
         local: bool,
-        /// The session that asked (`orbit ctl` reads `ORBIT_SESSION_KEY`):
+        /// The session that asked (`orbit ctl` reads Claude Code's session id):
         /// it owns the initiative, the card opens it to steer.
         #[serde(default)]
         session: Option<String>,

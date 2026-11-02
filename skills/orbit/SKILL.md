@@ -35,6 +35,25 @@ If the brief has no Orbit section, you are not inside Orbit: do nothing.
   hooks miss it: `working`, `needs-decision`, `needs-approval`, `turn`,
   `failed`, each with one line of text. Never `ended`; that is Claude Code's.
 
+## Peers
+
+Other sessions run beside you, like threads in one project. Orbit tells you
+about them as "Orbit project update" context: the project rules
+(`project.md`), and each live session with its state, its note and what it
+owns (`claim` lines and the PRs it opened).
+
+- Claim what you take on, so the others leave it alone:
+  `'<orbit>' report '<log>' claim "<scope>"`. A scope is a PR URL, a ticket
+  id, or a pattern a peer can match, e.g. `dependabot:acme/web` for every
+  dependency PR in that repo. One claim per line; the PRs you open count
+  already.
+- Before you change a PR, a ticket, or act on a notification, check the
+  latest update: if another live session owns it, skip it (mark a
+  notification read), and say in your note or answer who has it. Never
+  undo or duplicate a peer's work.
+- Follow the project rules over your own guess; a rule that is wrong is the
+  user's to change, say so in your answer.
+
 ## Rules
 
 - A session on a ticket leaves one short line on the ticket that it works on it

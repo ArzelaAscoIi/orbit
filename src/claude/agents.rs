@@ -110,7 +110,7 @@ impl Live {
                 State::Turn if self.looked_at(Some(report.at)) => return "idle",
                 State::Turn => return "your turn",
                 State::NeedsApproval => return "needs approval",
-                State::Pr | State::Failed | State::Ended | State::Note => {}
+                State::Pr | State::Failed | State::Ended | State::Note | State::Claim => {}
             }
         }
         if self.state.as_deref() == Some("working") {

@@ -343,3 +343,4 @@
 2026-10-25 · sign-in · Linear is optional: "Continue without Linear" on the sign-in => test:without_linear_only_linear_commands_are_dropped; test:ticket_views_need_linear_and_the_rest_do_not; test:running_without_linear_is_remembered_in_settings; code:src/ui/login.rs:Continue without Linear
 2026-10-25 · find · Find on the screen (Cmd+F) always has a way out: a × in its => test:find_closes_from_its_field_its_key_or_nothing_focused_never_a_terminal; code:src/ui/find.rs:.on_hover_text("Close (Esc)")
 2026-10-29 · testing · The Testing tab runs a PR's UI locally before any preview: r => test:a_local_ui_is_found_by_slug_or_name_and_checks_the_pr_out_first; code:src/ui/testing.rs:Run #{} locally
+2026-11-02 · sessions · Sessions work as peers, like threads in a Claude Project: ev => test:a_session_hears_its_live_peers_claims_once_and_never_an_ended_one; code:src/claude/status.rs:super::peers::news(log)

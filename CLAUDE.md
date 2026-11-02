@@ -96,6 +96,7 @@ src/claude/        Claude Code integration
   pi.rs            pi sessions: `pi --session-id` in an Orbit terminal; pi-orbit.ts (its extension) reports to the status log and asks before what the rules do not allow; tests/pi-extension.test.mjs
   terminal.rs      PTY + vt100 → egui; `Title` keeps the OSC title, `glance()` reads the screen for screen.rs
   screen.rs        herdr-style screen reading of an attached terminal: title spinner / "esc to interrupt" = Working, permission or question prompt = Blocked, prompt box = Prompt; `Live::label()` reads it before the hooks
+  peers.rs         sessions as peers: <data>/project.md rules + every live status log (state, note, claims, PRs), told to each session by its hooks only when it changed
   status.rs        hook-written status log per session (working / needs-decision / needs-approval / turn / pr / failed / ended / note); `report` is the session's own line (`note` = its one-line summary), `progress_hint` ends every brief
   mod.rs           `seen` (key → when the user last had the session in front; a Turn before that reads idle, herdr's done vs idle), `notes` (started fresh: no transcript), `glance()` each frame
 src/activity.rs    activity.jsonl: one line per Action (name, view, tab, via key/click, its `gate`, and for a decision `ctx`: the ticket/PR/session/notification it acted on as enums and counts, id hashed), never text; `GATES` says per Action who may take it (look / app / do / queue / yours), groundwork for an operator agent; the orbit-improve skill reads it

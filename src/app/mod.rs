@@ -89,7 +89,8 @@ pub enum Action {
         id: String,
         split: bool,
     },
-    /// Shows the next ticket For you lists in the active pane (Alt+Down).
+    /// Shows the next ticket For you lists in the active pane (Alt+Down,
+    /// when no other window waits on the user: then Alt+Down is `GoWindow`).
     NextForYou,
     /// Shows this window of the strip (Cmd+1 to 9, Cmd+Shift+] and [).
     GoWindow(usize),
@@ -424,6 +425,9 @@ pub enum Action {
     /// Closes a window of the strip with all its panes (its × or a middle
     /// click); sessions keep running, shells end. The last one empties.
     CloseWindow(usize),
+    /// Closes these windows (the sidebar's "close done": every ticket in
+    /// them is done), each as `CloseWindow` does; sessions keep running.
+    CloseDoneWindows(Vec<usize>),
     /// Cmd+Z: the last closed window back where it was (its history keeps 20).
     ReopenWindow,
     /// Closes a pane (`None`: the focused one).

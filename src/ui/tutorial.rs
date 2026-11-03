@@ -86,6 +86,22 @@ pub const STEPS: &[Step] = &[
          pinned first, and the windows come back as you left them when Orbit restarts.",
     ),
     step(
+        Some("windows-waiting"),
+        None,
+        "The next window waiting on you",
+        "Under the windows' header, \"2 waiting ⌥↓\" counts the windows whose session needs \
+         approval, waits for your turn or failed. Click it or press Option+Down to jump to the \
+         next one after the current window; with none waiting, Option+Down shows the next ticket \
+         For you lists.",
+    ),
+    step(
+        Some("windows-close-done"),
+        None,
+        "Close the finished windows",
+        "\"close done (N)\" closes in one go every window whose tickets are all done. Their \
+         sessions keep running, and Cmd+Z reopens them one by one.",
+    ),
+    step(
         Some("tabs"),
         None,
         "A pane",

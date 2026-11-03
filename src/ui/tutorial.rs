@@ -217,6 +217,16 @@ pub const STEPS: &[Step] = &[
     step(
         Some("list"),
         Some(View::Sessions),
+        "Sessions as peers",
+        "Every session Orbit starts knows the others, like threads in one project: at a \
+         prompt and after a command it is told which sessions are live, what each is on and \
+         what each owns (the PRs it opened, what it claimed), and it skips what a peer owns. \
+         Standing rules for all of them go in project.md in Orbit's data folder, e.g. \
+         \"landing owns dependency PRs\".",
+    ),
+    step(
+        Some("list"),
+        Some(View::Sessions),
         "Sessions",
         "Every Claude Code session on this Mac, most relevant first: waiting on your approval, \
          then your turn (a turn you have not looked at yet), then at work, then idle; ranked in \

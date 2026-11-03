@@ -26,6 +26,7 @@
 mod agents;
 pub mod codex;
 pub mod idle;
+pub mod peers;
 mod pi;
 pub mod screen;
 mod shell;

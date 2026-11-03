@@ -40,6 +40,10 @@ pub enum State {
     /// A one-line summary the session wrote itself (`orbit report <log>
     /// note "…"`): display only, never a state.
     Note,
+    /// Work the session owns (`orbit report <log> claim "<scope>"`): a PR,
+    /// a ticket, a pattern like `dependabot:acme/web`. Peers skip it
+    /// (peers.rs); never a state.
+    Claim,
 }
 
 impl State {
@@ -53,6 +57,7 @@ impl State {
             Self::Failed => "failed",
             Self::Ended => "ended",
             Self::Note => "note",
+            Self::Claim => "claim",
         }
     }
 
@@ -66,6 +71,7 @@ impl State {
             "failed" => Self::Failed,
             "ended" => Self::Ended,
             "note" => Self::Note,
+            "claim" => Self::Claim,
             _ => return None,
         })
     }
@@ -149,10 +155,21 @@ fn with_co_author(mut settings: Value, co_author: Option<String>) -> Value {
 }
 
 /// The `hook` subcommand: reads the event on stdin, appends its line.
+/// At a prompt and after a command it also prints what the session's peers
+/// do, when that changed since it last saw it (peers.rs).
 pub fn hook(log: &Path) -> Result<()> {
     let mut input = String::new();
     std::io::stdin().read_to_string(&mut input)?;
     let event: Value = serde_json::from_str(&input).context("hook input is not JSON")?;
+    if let Some(name @ ("UserPromptSubmit" | "PostToolUse")) = event["hook_event_name"].as_str()
+        && let Some(context) = super::peers::news(log)
+    {
+        let out = json!({ "hookSpecificOutput": {
+            "hookEventName": name,
+            "additionalContext": context,
+        }});
+        println!("{out}");
+    }
     let Some((state, text)) = line(&event) else {
         return Ok(());
     };
@@ -166,7 +183,7 @@ pub fn hook(log: &Path) -> Result<()> {
 pub fn report(log: &Path, state: &str, text: &str) -> Result<()> {
     let state = match State::parse(state) {
         Some(State::Ended | State::Pr) | None => bail!(
-            "state {state:?} is not one of note, working, needs-decision, needs-approval, turn, failed"
+            "state {state:?} is not one of note, claim, working, needs-decision, needs-approval, turn, failed"
         ),
         Some(state) => state,
     };
@@ -188,8 +205,11 @@ pub fn progress_hint(key: &str) -> Option<String> {
         "## {name}
 This session runs inside {name}, which shows its row to the user. Put a \
          one-line summary of what you are on there whenever it changes (a sentence, under 80 \
-         characters, no secrets): `{command} note \"<summary>\"`. The `orbit` skill in this \
-         folder has the details. Never put an @-mention followed by a word and `!` in it.",
+         characters, no secrets): `{command} note \"<summary>\"`. Claim what you own so the \
+         other sessions leave it alone: `{command} claim \"<PR URL, ticket or pattern>\"`; \
+         before you touch a PR, ticket or notification, check the peers {name} tells you \
+         about and skip what another live session claims. The `orbit` skill in this folder \
+         has the details. Never put an @-mention followed by a word and `!` in it.",
         name = crate::NAME
     ))
 }
@@ -258,7 +278,7 @@ pub fn current(reports: &[Report]) -> Option<&Report> {
     reports
         .iter()
         .rev()
-        .find(|r| !matches!(r.state, State::Pr | State::Note))
+        .find(|r| !matches!(r.state, State::Pr | State::Note | State::Claim))
 }
 
 /// The session's own last one-line summary, if it wrote one.

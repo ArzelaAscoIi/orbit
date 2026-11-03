@@ -149,6 +149,8 @@ impl App {
                 self.merging.remove(&url);
                 match result {
                     Ok(crate::github::Merged::Commit(sha)) => {
+                        // GitHub's answer moves a PR-only card to done (`pr_known`).
+                        self.send(Command::Gate { url: url.clone() });
                         self.merged.insert(url, sha);
                         self.apply(Action::Refresh, ctx);
                     }

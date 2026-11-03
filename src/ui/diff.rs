@@ -7,7 +7,16 @@ use crate::anthropic::{Span, Step, Think};
 use crate::github::{Draft, File, Line};
 use crate::story::Pr;
 
-pub(super) fn show(app: &mut App, card: &Card, pr: &Pr, ui: &mut Ui, actions: &mut Vec<Action>) {
+/// `side`: the ticket's side column already offers Approve and Merge, so
+/// the header leaves them out.
+pub(super) fn show(
+    app: &mut App,
+    card: &Card,
+    pr: &Pr,
+    side: bool,
+    ui: &mut Ui,
+    actions: &mut Vec<Action>,
+) {
     ui.horizontal(|ui| {
         if card.prs.len() > 1 {
             // The shown PR underlined, the others links to their diffs.
@@ -42,9 +51,13 @@ pub(super) fn show(app: &mut App, card: &Card, pr: &Pr, ui: &mut Ui, actions: &m
             if app.moved(&pr.url).is_none() {
                 let lead = super::ticket::lead_of(app, pr);
                 super::ticket::update_branch(app, pr, ui, actions);
-                super::ticket::merge(app, pr, lead, ui, actions);
+                if !side {
+                    super::ticket::merge(app, pr, lead, ui, actions);
+                }
                 review_menu(app, pr, ui);
-                super::ticket::approve(app, pr, lead, ui, actions);
+                if !side {
+                    super::ticket::approve(app, pr, lead, ui, actions);
+                }
             }
         });
     });

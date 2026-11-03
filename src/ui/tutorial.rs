@@ -711,6 +711,14 @@ pub const STEPS: &[Step] = &[
          session. Matches are marked; Enter and Shift+Enter step through them, Esc closes.",
     ),
     step(
+        Some("diff-side"),
+        None,
+        "Your move beside the diff",
+        "On a wide window the Diff tab keeps the walkthrough's ask on the right: approve, merge \
+         and the other buttons, then the description. It scrolls on its own, so you read the \
+         change and act on it without switching tabs.",
+    ),
+    step(
         Some("diff-tree"),
         None,
         "Folders beside the diff",

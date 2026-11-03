@@ -299,7 +299,8 @@ pub const STEPS: &[Step] = &[
          blocks it is merged, until each has a PR for you to review, and says every move. One \
          that goes quiet for 30 minutes where the bot waits for a word (plan done, no plan, a \
          red PR) gets the bot's Plan or Build once, and you hear it. While it runs the row says \
-         how far it is; a click steers it, stop ends it.",
+         how far it is; a click steers it (the row says when its session is starting in the \
+         clone panel), stop ends it.",
     ),
     step(
         Some("the-ask"),
@@ -394,7 +395,8 @@ pub const STEPS: &[Step] = &[
          you (a review, a mention, an assignment, an SLA at risk, activity on your PR). A PR and \
          its ticket are one row, however many sides told you. Enter opens it and marks it read \
          on both, x only marks it read. A PR with no ticket opens here like one: walkthrough, \
-         diff, merge and approve, Claude; only Linear's parts are missing.",
+         diff, merge and approve, Claude; only Linear's parts are missing. Your own PR never \
+         asks for your review: it asks you to merge it once GitHub says it is green.",
     ),
     step(
         Some("stats"),

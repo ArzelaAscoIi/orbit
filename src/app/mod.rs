@@ -1874,13 +1874,16 @@ impl App {
     /// The same key or click again and again is a sign it did nothing the
     /// user could see: errors.log gets what the window looked like, to fix
     /// it from later (2026-10-22: Cmd+J pressed 10 times, the panel hidden).
+    /// Same means the same target too: folding five folders, ticking five
+    /// jobs or clearing five finished missions in a row is work, not a
+    /// click that did nothing.
     fn note_repeat(&mut self, action: &Action) {
         let name = crate::activity::name(action);
         if !repeat_counts(&name) {
             return;
         }
         let now = crate::activity::now_ms() as u64;
-        let (run, flag) = repeat_run(&self.repeat, &name, now);
+        let (run, flag) = repeat_run(&self.repeat, &repeat_key(action), now);
         self.repeat = run;
         if flag {
             note_error(
@@ -2300,7 +2303,8 @@ impl App {
     /// A PR-only card takes what GitHub says of its PR: the PR's title as
     /// its headline, its description, and done or canceled once it is
     /// merged or closed (it asks nothing then, and its session's turn is
-    /// over: `mark_finished`).
+    /// over: `mark_finished`). The user's own PR asks to be merged, never
+    /// reviewed (`story::pr_only_ask`).
     fn pr_known(&mut self, url: &str, gate: &crate::github::Gate) {
         let Some(i) = self
             .pr_cards
@@ -2315,7 +2319,8 @@ impl App {
             card.lane = old.lane;
             let same = old.issue.title == card.issue.title
                 && old.issue.description == card.issue.description
-                && old.stage == card.stage;
+                && old.stage == card.stage
+                && old.ask == card.ask;
             if !same {
                 self.pr_cards[i] = card;
             }
@@ -3234,6 +3239,11 @@ fn repeat_counts(name: &str) -> bool {
     )
 }
 
+/// What makes two actions the same repeat: the action with its target.
+fn repeat_key(action: &Action) -> String {
+    format!("{action:?}")
+}
+
 /// The run of repeats after `name` at `now`, and whether it just reached
 /// `REPEATS`. ponytail: any action counts; moving through a list with j/k
 /// can trip it too, a harmless line in errors.log.
@@ -3283,6 +3293,22 @@ mod skills_seen_tests {
         let (run, _) = super::repeat_run(&run, "ToggleChat", 9_000);
         let (run, _) = super::repeat_run(&run, "Find", 9_100);
         assert_eq!(run.2, 1);
+    }
+
+    #[test]
+    fn clearing_a_list_one_target_after_another_is_not_a_repeat() {
+        use super::Action;
+        let mut run = (String::new(), 0, 0);
+        let mut noted = 0;
+        for (t, id) in [(0, "a"), (300, "b"), (600, "c"), (900, "d"), (1200, "e")] {
+            let key = super::repeat_key(&Action::DismissMission(id.into()));
+            let (next, flag) = super::repeat_run(&run, &key, t);
+            run = next;
+            noted += usize::from(flag);
+        }
+        assert_eq!(noted, 0);
+        let same = super::repeat_key(&Action::Steer("i1".into()));
+        assert_eq!(same, super::repeat_key(&Action::Steer("i1".into())));
     }
 
     #[test]

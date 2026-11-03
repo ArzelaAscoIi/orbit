@@ -1274,6 +1274,7 @@ pub(super) fn next_action(
         Some(crate::story::Ask::Verify) => Some("verify"),
         Some(crate::story::Ask::Decide) => Some("decide"),
         Some(crate::story::Ask::Review) => Some("review"),
+        Some(crate::story::Ask::Merge) => Some("merge"),
         None => None,
     }
 }

@@ -73,6 +73,7 @@ pub fn open(
             Ask::Review => "Review",
             Ask::Decide => "Decide",
             Ask::Verify => "Verify",
+            Ask::Merge => "Merge",
         };
         out.insert(
             format!("card:{}:{verb}", card.issue.id),

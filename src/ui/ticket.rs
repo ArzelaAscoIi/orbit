@@ -2295,9 +2295,13 @@ fn mission(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
         Some(m) => (
             "Mission running",
             format!(
-                "{done} of {} sub-tickets done · {} at a time · click to steer it",
+                "{done} of {} sub-tickets done · {} at a time · {}",
                 kids.len(),
-                m.parallel
+                m.parallel,
+                steer_note(
+                    app.claude.starting.contains(&m.session),
+                    app.chat_open && app.chat.as_deref() == Some(m.session.as_str()),
+                ),
             ),
         ),
         None => (
@@ -2354,6 +2358,17 @@ fn mission(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
         });
     }
     mark(app, ui, "mission", response.rect);
+}
+
+/// The running mission's last words: what a click does, or, once clicked,
+/// where its session comes up (it takes seconds to start, and the clone
+/// panel is far from this row).
+fn steer_note(starting: bool, shown: bool) -> &'static str {
+    match (starting, shown) {
+        (true, _) => "starting its session in the clone panel…",
+        (false, true) => "its session is open in the clone panel",
+        (false, false) => "click to steer it",
+    }
 }
 
 /// The ticket's parent and its sub-tickets, each with its state; a click
@@ -2822,6 +2837,13 @@ mod tests {
         assert_eq!(asked, vec![FixPart::Changes]);
         // A clean PR has nothing to fix: no button.
         assert!(fix_parts(&[("u/4", &gate(|_| {}))]).is_empty());
+    }
+
+    #[test]
+    fn a_steer_click_says_at_once_that_its_session_is_coming() {
+        assert_eq!(steer_note(false, false), "click to steer it");
+        assert!(steer_note(true, false).starts_with("starting"));
+        assert!(steer_note(false, true).contains("open in the clone panel"));
     }
 
     #[test]

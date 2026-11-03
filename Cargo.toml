@@ -24,10 +24,10 @@ tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "proce
 # Relative times ("3h ago") on tickets and the bot's timeline.
 jiff = "0.2"
 # unicode-rs IDNA instead of ICU4X: 17 Unicode-3.0 crates fewer for `url`.
-idna_adapter = "=1.1"
+idna_adapter = "=1.2"
 # The system's TLS (Security.framework on a Mac): no ring, rustls or their
 # ISC/BSD licenses, and a smaller app.
-reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json", "http2"] }
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "json", "http2"] }
 # Laya, the bug-or-not decision model (src/laya/), run in-process: candle
 # has ModernBERT, its encoder; tokenizers reads its tokenizer.json.
 candle-core = { version = "0.11", features = ["accelerate"] }
@@ -50,7 +50,7 @@ uuid = { version = "1", features = ["v4"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 # Sign in with Linear (src/oauth.rs): SHA-256 and base64url for the PKCE
 # challenge.
-sha2 = "0.10"
+sha2 = "0.11"
 base64 = "0.23"
 # The Codex daemon's control socket speaks JSON-RPC over WebSocket (src/claude/codex.rs).
 tungstenite = "0.30"

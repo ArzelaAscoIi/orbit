@@ -3796,7 +3796,10 @@ fn land_step(gate: &crate::github::Gate, head: &str) -> Land {
         Land::Merging
     } else if gate.head != head {
         Land::Skip("new commits since shown".into())
-    } else if gate.queued || (gate.auto_merge && !red) {
+    } else if gate.queued {
+        // Queued: a landing session watches the queue and fixes a drop.
+        Land::Goal
+    } else if gate.auto_merge && !red {
         Land::Merging
     } else if gate.green {
         Land::Merge
@@ -4350,7 +4353,11 @@ mod tests {
             queued: true,
             ..gate(false, false, "SUCCESS")
         };
-        assert_eq!(land_step(&queued, "abc"), Land::Merging);
+        assert_eq!(
+            land_step(&queued, "abc"),
+            Land::Goal,
+            "a session sees it through the queue"
+        );
         let auto = Gate {
             auto_merge: true,
             ..gate(false, false, "PENDING")

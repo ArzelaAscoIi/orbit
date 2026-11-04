@@ -414,14 +414,19 @@ pub fn request_review(url: &str, login: &str) -> Result<()> {
     Ok(())
 }
 
-/// Reviewed and still not mergeable: approved (or no review needed), open,
-/// not a draft, not queued, and something a session can fix is in the way
-/// (a check, the branch behind or in conflict). Land it offers a goal then.
+/// Reviewed and still not merged: approved (or no review needed), open,
+/// not a draft, and either in the merge queue (a session watches it there
+/// and fixes what makes the queue drop it) or held back by something a
+/// session can fix (a check, the branch behind or in conflict). Land it
+/// offers a goal then.
 pub fn landable(gate: &Gate) -> bool {
-    gate.state == "OPEN"
-        && !gate.draft
-        && !gate.queued
-        && !gate.green
+    if gate.state != "OPEN" || gate.draft {
+        return false;
+    }
+    if gate.queued {
+        return true;
+    }
+    !gate.green
         // Approved, or no review required and someone reviewed it anyway:
         // never a PR nobody looked at.
         && (gate.review == "APPROVED" || (gate.review.is_empty() && gate.reviewed_at.is_some()))
@@ -1867,6 +1872,11 @@ mod tests {
             ..gate("APPROVED", "SUCCESS", "CLEAN")
         };
         assert!(!landable(&green), "nothing to land");
+        let queued = Gate {
+            queued: true,
+            ..green
+        };
+        assert!(landable(&queued), "in the queue: a session sees it through");
     }
 
     #[test]

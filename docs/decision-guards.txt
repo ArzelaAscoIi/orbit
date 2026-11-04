@@ -349,3 +349,4 @@
 2026-11-03 · diff · On a wide window (1100 pt and up) the Diff tab shows the wal => test:a_wide_diff_tab_keeps_the_ask_beside_it; code:src/ui/ticket.rs:mark(app, ui, "diff-side", rect)
 2026-11-03 · windows · Option+Down jumps to the next window waiting on the user (ne => test:the_next_waiting_window_comes_after_the_current_one_and_cycles; code:src/ui/mod.rs:actions.push(bar::next_for_you(app));
 2026-11-03 · windows · "close done (N)" in the sidebar closes every window whose ti => test:done_windows_close_from_the_highest_index_once_each; code:src/ui/bar.rs:actions.push(Action::CloseDoneWindows(done));
+2026-11-04 · ticket · Land it also shows on a PR already in the merge queue: its l => test:a_reviewed_pr_held_back_by_ci_or_its_branch_can_be_landed; test:land_approved_merges_green_waits_on_checks_and_lands_the_rest

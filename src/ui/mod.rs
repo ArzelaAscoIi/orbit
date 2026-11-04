@@ -82,7 +82,10 @@ pub const SHORTCUTS: &[(&str, &str)] = &[
     ("⌘⇧F", "Feedback: improve Orbit"),
     ("⌘⇧T", "Next theme"),
     ("⌘,", "Settings"),
-    ("⌥↓", "Next ticket that needs you"),
+    (
+        "⌥↓",
+        "Next window waiting on you, else the next ticket that needs you",
+    ),
     ("i", "Raise the sheet"),
     (
         "0 … 9",
@@ -1023,9 +1026,10 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
                 actions.push(Action::GoWindow(n));
             }
         }
-        // The next thing that needs you, without the sheet.
+        // The next thing that needs you, without the sheet: a window
+        // waiting on you first, else a ticket For you lists.
         if i.consume_key(Modifiers::ALT, Key::ArrowDown) {
-            actions.push(Action::NextForYou);
+            actions.push(bar::next_for_you(app));
         }
     });
     // The new tab takes the keys: Enter or T picks what goes in it, not

@@ -98,7 +98,33 @@ pub(super) fn show(
                 if view.tab == Tab::Diff
                     && let Some(pr) = card.pr(view.diff_pr.as_deref())
                 {
-                    diff::show(app, &card, pr, ui, actions);
+                    if !beside_diff(ui.available_width()) {
+                        diff::show(app, &card, pr, false, ui, actions);
+                        return;
+                    }
+                    // Wide: the walkthrough's ask and description beside the
+                    // diff, so a review needs no flipping between the tabs.
+                    ui.horizontal_top(|ui| {
+                        ui.vertical(|ui| {
+                            ui.set_width(ui.available_width() - SIDE_COLUMN - 16.0);
+                            diff::show(app, &card, pr, true, ui, actions);
+                        });
+                        ui.add_space(16.0);
+                        let rect = ui
+                            .vertical(|ui| {
+                                ui.set_width(SIDE_COLUMN);
+                                egui::ScrollArea::vertical()
+                                    .id_salt("diff-side")
+                                    .auto_shrink(false)
+                                    .show(ui, |ui| {
+                                        your_move(app, &card, ui, actions);
+                                        description(app, &card, ui, actions);
+                                    });
+                            })
+                            .response
+                            .rect;
+                        mark(app, ui, "diff-side", rect);
+                    });
                     return;
                 }
                 if view.tab == Tab::Testing && card.has_testing() {
@@ -132,30 +158,11 @@ pub(super) fn show(
                     }
                     // What the ticket is about, as filed, images and all; a
                     // PR with no ticket shows its own description, folded.
-                    let pr = card.pr_only();
-                    if let Some(description) = card
-                        .issue
-                        .description
-                        .as_deref()
-                        .filter(|d| !d.trim().is_empty())
-                    {
-                        section(ui, if pr { "The PR" } else { "The ticket" });
-                        let head = if pr {
-                            "Description"
-                        } else {
-                            "Original description"
-                        };
-                        let rect =
-                            egui::CollapsingHeader::new(RichText::new(head).color(p().text_2))
-                                .id_salt(("description", &card.issue.id))
-                                .default_open(!pr)
-                                .show(ui, |ui| markdown_images(app, ui, description, actions))
-                                .header_response
-                                .rect;
+                    if let Some(rect) = description(app, &card, ui, actions) {
                         mark(app, ui, "description", rect);
                     }
                     // A PR with no ticket has no Linear side to show.
-                    if pr {
+                    if card.pr_only() {
                         ui.add_space(24.0);
                         return;
                     }
@@ -176,6 +183,42 @@ pub(super) fn show(
                 });
             });
     });
+}
+
+/// The Diff tab's side column with the walkthrough's ask and description.
+const SIDE_COLUMN: f32 = 320.0;
+
+/// Whether the Diff tab is wide enough for the side column; a narrower
+/// one shows the diff alone.
+fn beside_diff(width: f32) -> bool {
+    width >= 1100.0
+}
+
+/// What the ticket is about, as filed, images and all; a PR with no
+/// ticket shows its own description, folded. The header's rect, if any.
+fn description(
+    app: &App,
+    card: &Card,
+    ui: &mut Ui,
+    actions: &mut Vec<Action>,
+) -> Option<egui::Rect> {
+    let description = card
+        .issue
+        .description
+        .as_deref()
+        .filter(|d| !d.trim().is_empty())?;
+    let pr = card.pr_only();
+    section(ui, if pr { "The PR" } else { "The ticket" });
+    let head = if pr {
+        "Description"
+    } else {
+        "Original description"
+    };
+    let header = egui::CollapsingHeader::new(RichText::new(head).color(p().text_2))
+        .id_salt(("description", &card.issue.id))
+        .default_open(!pr)
+        .show(ui, |ui| markdown_images(app, ui, description, actions));
+    Some(header.header_response.rect)
 }
 
 /// A pane's header, one slim row: the ticket's id, its tabs (the triage
@@ -2295,9 +2338,13 @@ fn mission(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
         Some(m) => (
             "Mission running",
             format!(
-                "{done} of {} sub-tickets done · {} at a time · click to steer it",
+                "{done} of {} sub-tickets done · {} at a time · {}",
                 kids.len(),
-                m.parallel
+                m.parallel,
+                steer_note(
+                    app.claude.starting.contains(&m.session),
+                    app.chat_open && app.chat.as_deref() == Some(m.session.as_str()),
+                ),
             ),
         ),
         None => (
@@ -2354,6 +2401,17 @@ fn mission(app: &App, card: &Card, ui: &mut Ui, actions: &mut Vec<Action>) {
         });
     }
     mark(app, ui, "mission", response.rect);
+}
+
+/// The running mission's last words: what a click does, or, once clicked,
+/// where its session comes up (it takes seconds to start, and the clone
+/// panel is far from this row).
+fn steer_note(starting: bool, shown: bool) -> &'static str {
+    match (starting, shown) {
+        (true, _) => "starting its session in the clone panel…",
+        (false, true) => "its session is open in the clone panel",
+        (false, false) => "click to steer it",
+    }
 }
 
 /// The ticket's parent and its sub-tickets, each with its state; a click
@@ -2825,6 +2883,13 @@ mod tests {
     }
 
     #[test]
+    fn a_steer_click_says_at_once_that_its_session_is_coming() {
+        assert_eq!(steer_note(false, false), "click to steer it");
+        assert!(steer_note(true, false).starts_with("starting"));
+        assert!(steer_note(false, true).contains("open in the clone panel"));
+    }
+
+    #[test]
     fn several_prs_to_review_are_one_ask_in_the_plural() {
         let pr =
             |n| crate::story::pr_from_url(&format!("https://github.com/o/r/pull/{n}"), "").unwrap();
@@ -2945,6 +3010,13 @@ mod tests {
             &card("XYZ-1", "Done", "completed"),
             "ABC"
         ));
+    }
+
+    #[test]
+    fn a_wide_diff_tab_keeps_the_ask_beside_it() {
+        assert!(beside_diff(1100.0));
+        assert!(beside_diff(1600.0));
+        assert!(!beside_diff(1099.0));
     }
 
     #[test]

@@ -2110,6 +2110,11 @@ impl App {
                 self.enter_window(after_close(self.window, i, self.windows.len()));
             }
             Action::CloseWindow(_) => {}
+            Action::CloseDoneWindows(windows) => {
+                for i in highest_first(windows) {
+                    self.apply(Action::CloseWindow(i), ctx);
+                }
+            }
             Action::ReopenWindow => {
                 let Some((i, window, claude)) = self.closed_windows.pop() else {
                     return;
@@ -3554,6 +3559,14 @@ fn closes_window(ids: &[u64], id: u64, windows: usize, shell: bool) -> bool {
     ids == [id] && (windows > 1 || shell)
 }
 
+/// Windows closed one by one from the highest index, so the lower ones keep
+/// their place.
+fn highest_first(mut windows: Vec<usize>) -> Vec<usize> {
+    windows.sort_unstable_by(|a, b| b.cmp(a));
+    windows.dedup();
+    windows
+}
+
 fn after_close(current: usize, closed: usize, left: usize) -> usize {
     match current {
         w if w > closed => w - 1,
@@ -4131,6 +4144,11 @@ mod tests {
         assert_eq!(closed[0], 5, "the oldest went");
         assert_eq!(reopen_at(2, 5), 2);
         assert_eq!(reopen_at(7, 3), 3, "fewer left: last");
+    }
+
+    #[test]
+    fn done_windows_close_from_the_highest_index_once_each() {
+        assert_eq!(highest_first(vec![1, 4, 2, 4]), [4, 2, 1]);
     }
 
     #[test]

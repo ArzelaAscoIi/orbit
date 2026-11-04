@@ -178,6 +178,7 @@ pub const GATES: &[(&str, Gate)] = &[
     ("FindClose", Gate::Look),
     ("Split", Gate::Look),
     ("CloseWindow", Gate::Look),
+    ("CloseDoneWindows", Gate::Look),
     ("ReopenWindow", Gate::Look),
     ("ClosePane", Gate::Look),
     ("FocusPane", Gate::Look),

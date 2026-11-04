@@ -86,6 +86,22 @@ pub const STEPS: &[Step] = &[
          pinned first, and the windows come back as you left them when Orbit restarts.",
     ),
     step(
+        Some("windows-waiting"),
+        None,
+        "The next window waiting on you",
+        "Under the windows' header, \"2 waiting ⌥↓\" counts the windows whose session needs \
+         approval, waits for your turn or failed. Click it or press Option+Down to jump to the \
+         next one after the current window; with none waiting, Option+Down shows the next ticket \
+         For you lists.",
+    ),
+    step(
+        Some("windows-close-done"),
+        None,
+        "Close the finished windows",
+        "\"close done (N)\" closes in one go every window whose tickets are all done. Their \
+         sessions keep running, and Cmd+Z reopens them one by one.",
+    ),
+    step(
         Some("tabs"),
         None,
         "A pane",
@@ -299,7 +315,8 @@ pub const STEPS: &[Step] = &[
          blocks it is merged, until each has a PR for you to review, and says every move. One \
          that goes quiet for 30 minutes where the bot waits for a word (plan done, no plan, a \
          red PR) gets the bot's Plan or Build once, and you hear it. While it runs the row says \
-         how far it is; a click steers it, stop ends it.",
+         how far it is; a click steers it (the row says when its session is starting in the \
+         clone panel), stop ends it.",
     ),
     step(
         Some("the-ask"),
@@ -394,7 +411,8 @@ pub const STEPS: &[Step] = &[
          you (a review, a mention, an assignment, an SLA at risk, activity on your PR). A PR and \
          its ticket are one row, however many sides told you. Enter opens it and marks it read \
          on both, x only marks it read. A PR with no ticket opens here like one: walkthrough, \
-         diff, merge and approve, Claude; only Linear's parts are missing.",
+         diff, merge and approve, Claude; only Linear's parts are missing. Your own PR never \
+         asks for your review: it asks you to merge it once GitHub says it is green.",
     ),
     step(
         Some("stats"),
@@ -707,6 +725,14 @@ pub const STEPS: &[Step] = &[
         "Find on screen",
         "Cmd+F finds text on whatever you are looking at, like a browser: a ticket, the diff, a \
          session. Matches are marked; Enter and Shift+Enter step through them, Esc closes.",
+    ),
+    step(
+        Some("diff-side"),
+        None,
+        "Your move beside the diff",
+        "On a wide window the Diff tab keeps the walkthrough's ask on the right: approve, merge \
+         and the other buttons, then the description. It scrolls on its own, so you read the \
+         change and act on it without switching tabs.",
     ),
     step(
         Some("diff-tree"),

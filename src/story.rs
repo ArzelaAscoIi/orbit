@@ -224,6 +224,8 @@ pub enum Ask {
     Review,
     Decide,
     Verify,
+    /// The user's own PR, green: theirs to merge (`pr_only_ask`).
+    Merge,
 }
 
 impl Ask {
@@ -232,6 +234,7 @@ impl Ask {
             Ask::Review => "Review the PR",
             Ask::Decide => "Decide",
             Ask::Verify => "Verify and close",
+            Ask::Merge => "Merge the PR",
         }
     }
 }
@@ -714,7 +717,21 @@ pub fn pr_card_from(url: &str, at: &str, gate: &crate::github::Gate) -> Option<C
     let title = Some(gate.title.trim()).filter(|t| !t.is_empty());
     let body = Some(gate.body.trim()).filter(|b| !b.is_empty());
     let name = pr_from_url(url, at).map(|p| format!("{}#{}", p.repo, p.number));
-    pr_card_as(url, title.or(name.as_deref())?, at, status, body)
+    let mut card = pr_card_as(url, title.or(name.as_deref())?, at, status, body)?;
+    card.ask = pr_only_ask(gate, card.ask);
+    card.why = why(&card.issue, card.stage, card.ask, &card.prs, card.ci);
+    Some(card)
+}
+
+/// What a PR-only card asks once GitHub answered: the user can never review
+/// their own PR, so it asks them to merge it once GitHub says it is green
+/// (open, CLEAN, checks and reviews in) and asks nothing while it waits on
+/// others. Someone else's PR keeps the ask it had.
+pub fn pr_only_ask(gate: &crate::github::Gate, ask: Option<Ask>) -> Option<Ask> {
+    if !gate.own {
+        return ask;
+    }
+    gate.green.then_some(Ask::Merge)
 }
 
 fn pr_card_as(
@@ -1202,6 +1219,7 @@ fn why(issue: &Issue, stage: Stage, ask: Option<Ask>, prs: &[Pr], ci: Ci) -> Str
                 },
                 |(who, why)| format!("Waiting on {who}: {why}"),
             ),
+        (Some(Ask::Merge), _) => "Your PR: approved, checks green, ready to merge.".into(),
         (Some(Ask::Verify), _) => match named(|p| p.merged, "PRs") {
             merged if merged.is_empty() => "Merged. Check it works, then close it.".into(),
             merged => format!("{merged} merged. Check it works, then close it."),
@@ -1850,6 +1868,27 @@ pub(crate) mod tests {
         // No title yet: the PR's name.
         let bare = pr_card_from(url, at, &crate::github::Gate::default()).unwrap();
         assert_eq!(bare.issue.title, "app#12");
+    }
+
+    #[test]
+    fn your_own_pr_only_card_never_asks_you_to_review_it() {
+        let url = "https://github.com/acme/app/pull/12";
+        let at = "2026-09-26T07:31:37Z";
+        let gate = |own: bool, green: bool| crate::github::Gate {
+            state: "OPEN".into(),
+            own,
+            green,
+            ..Default::default()
+        };
+        let ask = |g: &crate::github::Gate| pr_card_from(url, at, g).unwrap().ask;
+        assert_eq!(ask(&gate(true, true)), Some(Ask::Merge), "green: merge it");
+        assert_eq!(ask(&gate(true, false)), None, "waits on others");
+        assert_eq!(
+            ask(&gate(false, false)),
+            Some(Ask::Review),
+            "theirs: review"
+        );
+        assert_eq!(pr_only_ask(&gate(false, true), None), None);
     }
 
     #[test]

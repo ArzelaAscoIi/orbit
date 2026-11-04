@@ -482,6 +482,38 @@ fn wide(app: &App, ui: &mut Ui, collapsed_id: Id, actions: &mut Vec<Action>) {
             }
         });
     });
+    // What waits on the user (⌥↓ jumps there) and the finished windows to
+    // close in one go; the row only shows while one of them is there.
+    let waiting = waiting_windows(app).iter().filter(|w| **w).count();
+    let done: Vec<usize> = (0..app.windows.len())
+        .filter(|&i| window_done(app, i))
+        .collect();
+    if waiting > 0 || !done.is_empty() {
+        ui.horizontal(|ui| {
+            ui.add_space(14.0);
+            if waiting > 0 {
+                let jump = link(
+                    ui,
+                    label(&format!("{waiting} waiting ⌥↓")).color(p().signal),
+                )
+                .on_hover_text("The next window waiting on you (⌥↓)");
+                mark(app, ui, "windows-waiting", jump.rect);
+                if jump.clicked() {
+                    actions.push(next_for_you(app));
+                }
+            }
+            if !done.is_empty() {
+                ui.add_space(10.0);
+                let close = link(ui, label(&format!("close done ({})", done.len()))).on_hover_text(
+                    "Close every window whose tickets are all done; sessions keep running",
+                );
+                mark(app, ui, "windows-close-done", close.rect);
+                if close.clicked() {
+                    actions.push(Action::CloseDoneWindows(done));
+                }
+            }
+        });
+    }
     ui.add_space(4.0);
     let footer = 30.0;
     egui::ScrollArea::vertical()
@@ -1163,6 +1195,27 @@ fn strip_name(names: &[&str]) -> String {
     name
 }
 
+/// Per window: does its state wait on the user (needs approval, your turn,
+/// failed)?
+fn waiting_windows(app: &App) -> Vec<bool> {
+    (0..app.windows.len())
+        .map(|i| window(app, i).1.is_some_and(|s| urgency(s) < 3))
+        .collect()
+}
+
+/// The first window after `current`, cycling, that waits on the user; the
+/// current one never counts (the user is already there).
+fn next_waiting(waiting: &[bool], current: usize) -> Option<usize> {
+    let n = waiting.len();
+    (1..n).map(|k| (current + k) % n).find(|&i| waiting[i])
+}
+
+/// ⌥↓ and the sidebar's "waiting" link: the next window waiting on the
+/// user, else the next ticket For you lists.
+pub(super) fn next_for_you(app: &App) -> Action {
+    next_waiting(&waiting_windows(app), app.window).map_or(Action::NextForYou, Action::GoWindow)
+}
+
 /// Which state the strip shows for a window of several panes: what waits on
 /// the user first.
 fn urgency(status: &str) -> u8 {
@@ -1274,6 +1327,7 @@ pub(super) fn next_action(
         Some(crate::story::Ask::Verify) => Some("verify"),
         Some(crate::story::Ask::Decide) => Some("decide"),
         Some(crate::story::Ask::Review) => Some("review"),
+        Some(crate::story::Ask::Merge) => Some("merge"),
         None => None,
     }
 }
@@ -1708,6 +1762,20 @@ mod tests {
             super::settings_click(&View::Settings),
             Action::Sheet(false)
         ));
+    }
+
+    #[test]
+    fn the_next_waiting_window_comes_after_the_current_one_and_cycles() {
+        let waiting = [true, false, true, false];
+        assert_eq!(super::next_waiting(&waiting, 0), Some(2));
+        assert_eq!(super::next_waiting(&waiting, 2), Some(0), "cycles");
+        assert_eq!(super::next_waiting(&waiting, 3), Some(0));
+        assert_eq!(
+            super::next_waiting(&[false, true], 1),
+            None,
+            "only the current one: nothing to jump to"
+        );
+        assert_eq!(super::next_waiting(&[], 0), None);
     }
 
     #[test]

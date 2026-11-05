@@ -464,6 +464,21 @@ fn wide(app: &App, ui: &mut Ui, collapsed_id: Id, actions: &mut Vec<Action>) {
                 actions.push(Action::NewTab);
             }
             ui.add_space(10.0);
+            let on = notes_on(ui);
+            let notes = link(
+                ui,
+                label("notes").color(if on { p().signal } else { p().text_3 }),
+            )
+            .on_hover_text(if on {
+                "Hide the notes but the current window's (⌘⇧N)"
+            } else {
+                "Show every window's note (⌘⇧N)"
+            });
+            mark(app, ui, "windows-notes", notes.rect);
+            if notes.clicked() {
+                toggle_notes(ui.ctx());
+            }
+            ui.add_space(10.0);
             let (text, hint) = match sort {
                 SORT_NEEDS => ("needs you first", "Next: grouped by repository"),
                 SORT_REPO => ("by repo", "Next: your own order"),
@@ -828,6 +843,12 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
     let dragging_id = Id::unique("strip-dragging");
     let dragging: Option<usize> = ui.data(|d| d.get_temp(dragging_id));
     let mut rects: Vec<Rect> = Vec::new();
+    // One line per window; its note shows when it is current, hovered, or
+    // every note is on (`notes` link, Cmd+Shift+N).
+    let notes = notes_on(ui);
+    let hovered_id = Id::unique("strip-hovered");
+    let hovered: Option<usize> = ui.data(|d| d.get_temp(hovered_id)).flatten();
+    let mut hovered_now = None;
     for &i in &order {
         let (name, status, parts, next) = &windows[i];
         // By repo: a heading where the repository changes.
@@ -845,10 +866,15 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
             });
         }
         let current = i == app.window && app.view != View::Settings;
+        // ponytail: hover read from last frame, one frame late on purpose.
+        let show_note = current || hovered == Some(i) || notes;
         let response = sidebar_row(ui, current, reorder, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 6.0;
                 ui.label(label(&(i + 1).to_string()));
+                if let Some(status) = status {
+                    state_dot(ui, status, window_color(status));
+                }
                 // An alert investigation's window reads as one, in red; the clone's in green.
                 let marked = ["ALERT ·", "INCIDENT ·", "RELEASE ·"];
                 let color = if marked.iter().any(|m| name.starts_with(m)) {
@@ -880,9 +906,15 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
                     }
                     // The next move, where done would be: a finished session
                     // says what is left on its ticket.
-                    if let Some(next) = next.filter(|_| !done) {
-                        ui.label(label(next).color(p().signal))
-                            .on_hover_text("Your next move on this ticket");
+                    match row_badge(*next, *status, done) {
+                        Some((next, true)) => {
+                            ui.label(label(next).color(p().signal))
+                                .on_hover_text("Your next move on this ticket");
+                        }
+                        Some((text, false)) => {
+                            ui.label(label(text).color(window_color(text)));
+                        }
+                        None => {}
                     }
                     ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.add(
@@ -892,19 +924,13 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
                     });
                 });
             });
-            if let Some(parts) = parts {
+            if let Some(parts) = parts.as_ref().filter(|_| show_note) {
                 ui.add(egui::Label::new(label(parts)).truncate());
             }
-            if let Some(status) = status {
-                ui.horizontal(|ui| {
-                    state(ui, status, window_color(status), window_color(status));
-                    if matches!(*status, "working" | "starting") {
-                        ui.add_space(4.0);
-                        ui.label(label(status).color(p().success));
-                    }
-                });
-            }
         });
+        if response.hovered() {
+            hovered_now = Some(i);
+        }
         if i == app.window && changed {
             response.scroll_to_me(Some(Align::Center));
             if ui.clip_rect().contains_rect(response.rect) {
@@ -942,6 +968,10 @@ fn sidebar_rows(app: &App, ui: &mut Ui, sort: u8, actions: &mut Vec<Action>) {
                 actions.push(Action::Sheet(false));
             }
         }
+    }
+    if hovered_now != hovered {
+        ui.data_mut(|d| d.insert_temp(hovered_id, hovered_now));
+        ui.ctx().request_repaint();
     }
     // While a row is dragged: a 2px marker where it would land, the list
     // scrolls at its edges, and on release it moves there.
@@ -1090,6 +1120,40 @@ fn tab_menu(app: &App, i: usize, name: &str, ui: &mut Ui, actions: &mut Vec<Acti
         actions.push(Action::MoveWindow { from: i, to: i + 1 });
         ui.close();
     }
+}
+
+/// Whether every window's note line shows (`sidebar-notes` in egui's
+/// memory); off, only the current and the hovered window show theirs.
+pub(super) const NOTES: &str = "sidebar-notes";
+
+pub(super) fn notes_on(ui: &Ui) -> bool {
+    ui.data(|d| d.get_temp(Id::unique(NOTES))).unwrap_or(false)
+}
+
+pub(super) fn toggle_notes(ctx: &egui::Context) {
+    let id = Id::unique(NOTES);
+    ctx.data_mut(|d| {
+        let on: bool = d.get_temp(id).unwrap_or(false);
+        d.insert_temp(id, !on);
+    });
+}
+
+/// The one badge on a window's line: the next move (true) wins, else a
+/// state that waits on the user (false); a spinner or the done × says the
+/// rest.
+fn row_badge(
+    next: Option<&'static str>,
+    status: Option<&'static str>,
+    done: bool,
+) -> Option<(&'static str, bool)> {
+    if done {
+        return None;
+    }
+    next.map(|n| (n, true)).or_else(|| {
+        status
+            .filter(|s| !matches!(*s, "working" | "starting"))
+            .map(|s| (s, false))
+    })
 }
 
 /// One row of the sidebar: hairline under it, the selection fill and a
@@ -1762,6 +1826,25 @@ mod tests {
             super::settings_click(&View::Settings),
             Action::Sheet(false)
         ));
+    }
+
+    #[test]
+    fn a_window_line_carries_one_badge_the_next_move_first() {
+        use super::row_badge;
+        assert_eq!(
+            row_badge(Some("merge"), Some("failed"), false),
+            Some(("merge", true))
+        );
+        assert_eq!(
+            row_badge(None, Some("failed"), false),
+            Some(("failed", false))
+        );
+        assert_eq!(
+            row_badge(None, Some("working"), false),
+            None,
+            "spinner says it"
+        );
+        assert_eq!(row_badge(Some("merge"), None, true), None, "done × says it");
     }
 
     #[test]

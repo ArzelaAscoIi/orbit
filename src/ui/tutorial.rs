@@ -95,6 +95,15 @@ pub const STEPS: &[Step] = &[
          For you lists.",
     ),
     step(
+        Some("windows-notes"),
+        None,
+        "One line per window",
+        "Each window is one line: its number, its state, its name and one badge on the right \
+         (your next move, else failed or your turn). Its note, what its session says it is on, \
+         shows only on the current and the hovered window. notes in the header, or \
+         Cmd+Shift+N, shows every window's note.",
+    ),
+    step(
         Some("windows-close-done"),
         None,
         "Close the finished windows",

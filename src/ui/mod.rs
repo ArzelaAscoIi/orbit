@@ -925,6 +925,7 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
         && app.tab != Tab::Triage
         && !(app.tab == Tab::Claude && app.session.is_some());
     let mut new_tab = false;
+    let mut notes = false;
     ui.ctx().input_mut(|i| {
         if i.consume_key(shift, Key::T) {
             actions.push(Action::SetTheme(app.theme.next()));
@@ -936,6 +937,9 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
         }
         if i.consume_key(shift, Key::Enter) {
             actions.push(Action::ZoomPane);
+        }
+        if i.consume_key(shift, Key::N) {
+            notes = true;
         }
         if i.consume_key(Modifiers::COMMAND, Key::Enter) {
             actions.push(Action::FullScreen);
@@ -1034,6 +1038,9 @@ fn keys(app: &App, ui: &Ui, actions: &mut Vec<Action>) {
     });
     // The new tab takes the keys: Enter or T picks what goes in it, not
     // the terminal that had focus.
+    if notes {
+        bar::toggle_notes(ui.ctx());
+    }
     if new_tab && let Some(id) = ui.ctx().memory(|m| m.focused()) {
         ui.ctx().memory_mut(|m| m.surrender_focus(id));
     }

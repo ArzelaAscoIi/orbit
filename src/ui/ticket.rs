@@ -104,15 +104,16 @@ pub(super) fn show(
                     }
                     // Wide: the walkthrough's ask and description beside the
                     // diff, so a review needs no flipping between the tabs.
+                    let side = side_column(ui.available_width());
                     ui.horizontal_top(|ui| {
                         ui.vertical(|ui| {
-                            ui.set_width(ui.available_width() - SIDE_COLUMN - 16.0);
+                            ui.set_width(ui.available_width() - side - 16.0);
                             diff::show(app, &card, pr, true, ui, actions);
                         });
                         ui.add_space(16.0);
                         let rect = ui
                             .vertical(|ui| {
-                                ui.set_width(SIDE_COLUMN);
+                                ui.set_width(side);
                                 egui::ScrollArea::vertical()
                                     .id_salt("diff-side")
                                     .auto_shrink(false)
@@ -185,8 +186,11 @@ pub(super) fn show(
     });
 }
 
-/// The Diff tab's side column with the walkthrough's ask and description.
-const SIDE_COLUMN: f32 = 320.0;
+/// The Diff tab's side column with the walkthrough's ask and description:
+/// a third of the width, 320 to 600 pt, so a wide window gives it room.
+fn side_column(width: f32) -> f32 {
+    (width / 3.0).clamp(320.0, 600.0)
+}
 
 /// Whether the Diff tab is wide enough for the side column; a narrower
 /// one shows the diff alone.
@@ -3017,6 +3021,14 @@ mod tests {
         assert!(beside_diff(1100.0));
         assert!(beside_diff(1600.0));
         assert!(!beside_diff(1099.0));
+    }
+
+    #[test]
+    fn the_side_column_grows_with_the_window() {
+        assert!((side_column(1100.0) - 366.7).abs() < 0.1);
+        assert_eq!(side_column(900.0), 320.0);
+        assert_eq!(side_column(1500.0), 500.0);
+        assert_eq!(side_column(3000.0), 600.0);
     }
 
     #[test]

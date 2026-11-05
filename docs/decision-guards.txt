@@ -350,3 +350,4 @@
 2026-11-03 · windows · Option+Down jumps to the next window waiting on the user (ne => test:the_next_waiting_window_comes_after_the_current_one_and_cycles; code:src/ui/mod.rs:actions.push(bar::next_for_you(app));
 2026-11-03 · windows · "close done (N)" in the sidebar closes every window whose ti => test:done_windows_close_from_the_highest_index_once_each; code:src/ui/bar.rs:actions.push(Action::CloseDoneWindows(done));
 2026-11-05 · windows · A sidebar window is one line: number, state dot, name and on => test:a_window_line_carries_one_badge_the_next_move_first; code:src/ui/bar.rs:mark(app, ui, "windows-notes"
+2026-11-05 · diff · The Diff tab's side column (your move and the description) t => test:the_side_column_grows_with_the_window; code:src/ui/ticket.rs:(width / 3.0).clamp(320.0, 600.0)

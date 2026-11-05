@@ -536,8 +536,20 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
             }
         }
     }
+    let link_color = theme::ANSI[12];
     for row in 0..rows {
         let y = origin.y + f32::from(row) * cell_h;
+        // Links always show as links: bright blue, underlined, across rows
+        // the terminal wrapped.
+        // ponytail: one logical line per row each frame; cache per row if panes get slow.
+        let (line, offset) = logical_line(screen, row, 0, cols);
+        let links: Vec<(u16, u16)> = link_spans(&line)
+            .into_iter()
+            .filter_map(|(a, b)| {
+                let (a, b) = (a.max(offset), b.min(offset + cols as usize));
+                (a < b).then(|| ((a - offset) as u16, (b - offset) as u16))
+            })
+            .collect();
         // Runs of plain-width text in one style are drawn together; anything
         // else is drawn at its own cell so columns stay aligned.
         let mut run = String::new();
@@ -570,6 +582,9 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
             }
             if cell.dim() {
                 fg = fg.lerp_to_gamma(bg, 0.4);
+            }
+            if links.iter().any(|&(a, b)| (a..b).contains(&col)) {
+                fg = link_color;
             }
             fg = theme::readable(fg, bg);
             let width = if cell.is_wide() { 2.0 } else { 1.0 };
@@ -609,6 +624,13 @@ pub fn show(ui: &mut Ui, terminal: &mut Terminal) -> Option<String> {
             }
         }
         flush(&mut run, run_col, run_style);
+        for &(a, b) in &links {
+            painter.hline(
+                origin.x + f32::from(a) * cell_w..=origin.x + f32::from(b) * cell_w,
+                y + cell_h - 1.5,
+                egui::Stroke::new(1.0, link_color),
+            );
+        }
     }
     if focused && !screen.hide_cursor() && screen.scrollback() == 0 {
         let (row, col) = screen.cursor_position();
@@ -682,6 +704,42 @@ fn logical_line(screen: &vt100::Screen, row: u16, col: usize, cols: u16) -> (Vec
         })
         .collect();
     (cells, (row - first) as usize * cols as usize + col)
+}
+
+/// The cells of every link in a logical line, as `start..end`: what
+/// `url_at` would open, trailing punctuation left out.
+fn link_spans(cells: &[String]) -> Vec<(usize, usize)> {
+    let blank = |c: &String| c.is_empty() || c.chars().all(char::is_whitespace);
+    let closes = [".", ",", ";", ":", ")", "]", ">", "'", "\"", "`"];
+    let mut spans = Vec::new();
+    let mut col = 0;
+    while col < cells.len() {
+        if blank(&cells[col]) {
+            col += 1;
+            continue;
+        }
+        let end = cells[col..]
+            .iter()
+            .position(blank)
+            .map_or(cells.len(), |i| col + i);
+        let start = (col..end).find(|&i| {
+            let rest = cells[i..end].concat();
+            ["https://", "http://", "orbit://"]
+                .iter()
+                .any(|s| rest.starts_with(s))
+        });
+        if let Some(start) = start {
+            let mut stop = end;
+            while stop > start && closes.contains(&cells[stop - 1].as_str()) {
+                stop -= 1;
+            }
+            if url_at(cells, start).is_some() {
+                spans.push((start, stop));
+            }
+        }
+        col = end;
+    }
+    spans
 }
 
 /// The http(s) URL covering cell `col`, trailing punctuation dropped; or
@@ -922,6 +980,15 @@ mod tests {
         assert_eq!(down, -2);
         assert_eq!(wheel_bytes(2, true), b"\x1b[<64;1;1M\x1b[<64;1;1M".to_vec());
         assert_eq!(wheel_bytes(-1, false), vec![0x1b, b'[', b'M', 97, 33, 33]);
+    }
+
+    #[test]
+    fn every_link_in_a_line_is_marked_without_its_punctuation() {
+        let cells: Vec<String> = "see (https://x.io/a). and orbit://session/k, ok https://"
+            .chars()
+            .map(String::from)
+            .collect();
+        assert_eq!(link_spans(&cells), vec![(5, 19), (26, 43)]);
     }
 
     #[test]

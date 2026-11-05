@@ -351,3 +351,4 @@
 2026-11-03 · windows · "close done (N)" in the sidebar closes every window whose ti => test:done_windows_close_from_the_highest_index_once_each; code:src/ui/bar.rs:actions.push(Action::CloseDoneWindows(done));
 2026-11-05 · windows · A sidebar window is one line: number, state dot, name and on => test:a_window_line_carries_one_badge_the_next_move_first; code:src/ui/bar.rs:mark(app, ui, "windows-notes"
 2026-11-05 · diff · The Diff tab's side column (your move and the description) t => test:the_side_column_grows_with_the_window; code:src/ui/ticket.rs:(width / 3.0).clamp(320.0, 600.0)
+2026-11-05 · sessions · Links in a terminal always show as links: bright blue and un => test:every_link_in_a_line_is_marked_without_its_punctuation; code:src/claude/terminal.rs:let link_color = theme::ANSI[12];

@@ -1,5 +1,7 @@
 # I finally let agents drive
 
+<p align="center"><img src="img/memory-cover.png" alt="Buzz shows Claude the whole board: see this? All your responsibility now" width="700"></p>
+
 For a year my agents were fast drivers who didn't know where I live. Every
 session I gave directions again: what I promised in a call, why we picked
 option B, which session was already on the bug. I was driving from the

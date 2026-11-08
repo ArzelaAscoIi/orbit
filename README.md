@@ -220,6 +220,7 @@ make check    # fmt + clippy + tests
 - [Cloud agents](docs/cloud-agents.md): a team bot that works from Linear comments
 - [Features](docs/features.md): every view, key and button
 - [Decisions](docs/decisions.md): every product decision, each one guarded by a test
+- [Memory](docs/memory.md): short-term, long-term and cross-session memory for agents
 - [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ## License

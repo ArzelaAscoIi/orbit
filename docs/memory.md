@@ -2,6 +2,8 @@
 
 <p align="center"><img src="img/memory-cover.png" alt="Buzz shows Claude the whole board: see this? All your responsibility now" width="700"></p>
 
+## Too many tabs
+
 For more than a year now the number of agent sessions kept growing up until the point
 it was hard for me to understand what all the different sessions were supposed to do.
 
@@ -17,6 +19,8 @@ With this all the unnecessary tab switches, clicks and typing stopped. All the a
 were just working on what I want to work on. This could have been anything from simple bugfixes
 to complex feature work and organizing how we can split work across the (human) team.
 
+## The ceiling: implicit context
+
 As always, as you gain some efficiency there is the point where you have to adjust again since
 you became efficient enough that you hit the ceiling again. For me this was "implicit context".
 
@@ -24,6 +28,8 @@ I think we all know that however hard you try, there will never be the full cont
 I already gave up on this before, but it represents the underlying issue: "What is in your
 brain vs. what's ready for others to be able to pick it up". This alone is not even an article,
 it's a research field.
+
+## Short-term memory: merkwerk
 
 Nonetheless the core issue I had was that too much was still somewhere buried in my thoughts and
 not available to be picked up by others (humans or agents). Since the best ideas usually come when talking to
@@ -39,11 +45,15 @@ to know the thought process of how we got there to make it happen.
 This context is what I use for "short-term memory". Just like my memory remembering what I spoke about in the
 last couple of days or weeks.
 
+## Long-term memory: a knowledge graph
+
 If there is a short-term memory there also needs to be something that fills the gap for
 long-term priorities: quarterly goals, my personal development goals, results of meetings some months ago.
 Since the nature of this context is rather complex, nonlinear and lives from "connecting the dots"
 between for example company strategy, tech decisions or ideas, I added a simple knowledge graph that.
 It's a simple skill that updates Notion pages with sublinks. Nothing fancy, but enough.
+
+## Connecting it: a chief of staff
 
 Great. Now we did our best to somehow make our personal context agent readable and allow agents
 to use it. But how does this connect to Orbit?
@@ -55,6 +65,8 @@ right now and guides me through what actually matters. It starts with an approx.
 merkwerk, Notion and later Slack, GitHub and Orbit and acts as a "chief of staff" that proposes next actions
 for tickets and pull requests or even helps with creative tasks like planning user interviews. So everything
 I am working on.
+
+## Me, the decision maker
 
 To summarize this: We now have a tool that easily allows you to couple the product context with your agents
 (Linear <> Claude Code) and exposes a CLI for it to be automated. We also have implicit context of

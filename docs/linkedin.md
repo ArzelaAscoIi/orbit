@@ -8,7 +8,7 @@ Repo link for every post: https://github.com/ArzelaAscoIi/orbit
 | 2 | One window for every session | A drop-in for your terminal: every ticket, its session and its PR in one place. | `chaos-vs-control@2x.png`, then `one-window.png` |
 | 3 | The clone | A Claude session that runs your other sessions. | `clone-works@2x.png`, `demo.gif` |
 | 4 | Fork it | Not built to fit everyone. Built to become yours. | `fork-it@2x.png` |
-| 5 | My agents remember now | Short-term memory, long-term memory and context across sessions, all local. Article: [memory.md](memory.md) | none yet |
+| 5 | I finally let agents drive | Memory lets agents take the wheel; I navigate. Article: [memory.md](memory.md) | none yet |
 
 ## Post 1: Connect everything, locally
 
@@ -96,24 +96,29 @@ Repo link for every post: https://github.com/ArzelaAscoIi/orbit
 > Fork it and tell me the first thing you changed:
 > https://github.com/ArzelaAscoIi/orbit
 
-## Post 5: My agents remember now
+## Post 5: I finally let agents drive
 
-> My agents write code fast. They don't know what I promised in a call,
-> why we picked option B, or which session is already on the bug.
+> For a year my agents were fast drivers who didn't know where I live.
+> Every session I gave directions again.
 >
-> So I gave them memory:
+> Now I navigate. I pick the destination and have an opinion about the
+> playlist. The agents do the heavy lifting, and they know me by heart.
 >
-> - Short term: merkwerk records my calls and my day on my Mac.
->   Unlike a notetaker, my agent can annotate a meeting: when I clarify
->   what a call meant, the next retrieval knows.
+> What changed is memory:
+>
+> - Short term: merkwerk records my calls and my day on my Mac. My agent
+>   can annotate a meeting: when I clarify what a call meant, the next
+>   retrieval knows.
 > - Long term: a knowledge graph of projects, people and incidents,
 >   synced daily.
 > - Across sessions: Orbit tells each agent what the others are on, keeps
 >   a work log and a decision log.
 >
-> merkwerk and Orbit run on my Mac. Fork them, your feature is one prompt away.
+> Every morning one session walks me through the decisions. What I clarify
+> goes back into memory. I finally have time for strategy and the hard
+> problems again.
 >
 > https://github.com/ArzelaAscoIi/merkwerk
 > https://github.com/ArzelaAscoIi/orbit
 >
-> What do you keep retyping to your agents?
+> What would you think about if your agents remembered everything for you?

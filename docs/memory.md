@@ -16,6 +16,8 @@ steps, the tough technical problems.
 What changed is memory. Three tools hold it, each one reachable over MCP or a
 CLI.
 
+<p align="center"><img src="social/how-it-works.png" alt="The loop: me, the chief of staff, merkwerk and the knowledge graph, Orbit and the agents; only decisions flow back up" width="540"></p>
+
 ## Short-term memory: merkwerk
 
 [merkwerk](https://github.com/ArzelaAscoIi/merkwerk) records my calls and my

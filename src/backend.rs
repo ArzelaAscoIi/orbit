@@ -692,9 +692,15 @@ async fn run(
                     number,
                     token,
                 } => Event::Diff {
-                    result: crate::github::diff(&http, token.as_deref(), &owner, &repo, number)
-                        .await
-                        .map_err(text),
+                    result: crate::github::coloured_diff(
+                        &http,
+                        token.as_deref(),
+                        &owner,
+                        &repo,
+                        number,
+                    )
+                    .await
+                    .map_err(text),
                     url,
                 },
                 Command::Gate { url } => {

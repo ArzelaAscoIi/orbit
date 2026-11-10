@@ -338,7 +338,7 @@
 2026-10-22 · ktlo · Land approved's count is only the PRs its click acts on (gre => test:land_approved_merges_green_waits_on_checks_and_lands_the_rest; code:src/ui/list.rs:app.land_plan(&p.url, &g.head); code:src/app/actions.rs:fn handed(step: Land, in_session: bool)
 2026-10-23 · sessions · Orbit ends the attach terminals nobody looks at every 10 min => test:only_the_agent_view_is_picked_never_a_json_list_or_a_session; code:src/app/mod.rs:self.claude.release_viewers(&in_front);
 2026-10-21 · settings · A saved Anthropic key can be dropped for Claude Code's login => test:typing_claude_code_for_the_key_means_its_login; code:src/ui/settings.rs:"Use Claude Code's login instead"
-2026-10-24 · diff · The Diff tab colours code by language (keywords, strings, co => test:python_reads_as_keywords_strings_and_comments; code:src/github.rs:file.spans = crate::syntax::spans(file);
+2026-10-24 · diff · The Diff tab colours code by language (keywords, strings, co => test:python_reads_as_keywords_strings_and_comments; code:src/github.rs:file.spans = crate::syntax::spans(file, None);
 2026-10-24 · licenses · Orbit ships no fonts and no copyleft code: theme.rs reads Ge => test:the_macs_fonts_cover_every_glyph_orbit_draws; code:src/theme.rs:system_fonts(&font_dirs())
 2026-10-25 · sign-in · Linear is optional: "Continue without Linear" on the sign-in => test:without_linear_only_linear_commands_are_dropped; test:ticket_views_need_linear_and_the_rest_do_not; test:running_without_linear_is_remembered_in_settings; code:src/ui/login.rs:Continue without Linear
 2026-10-25 · find · Find on the screen (Cmd+F) always has a way out: a × in its => test:find_closes_from_its_field_its_key_or_nothing_focused_never_a_terminal; code:src/ui/find.rs:.on_hover_text("Close (Esc)")
@@ -352,3 +352,5 @@
 2026-11-05 · windows · A sidebar window is one line: number, state dot, name and on => test:a_window_line_carries_one_badge_the_next_move_first; code:src/ui/bar.rs:mark(app, ui, "windows-notes"
 2026-11-05 · diff · The Diff tab's side column (your move and the description) t => test:the_side_column_grows_with_the_window; code:src/ui/ticket.rs:(width / 3.0).clamp(320.0, 600.0)
 2026-11-05 · sessions · Links in a terminal always show as links: bright blue and un => test:every_link_in_a_line_is_marked_without_its_punctuation; code:src/claude/terminal.rs:let link_color = theme::ANSI[12];
+2026-11-10 · diff · The Diff tab reads each changed file whole at the PR's head => test:a_hunk_inside_a_docstring_reads_as_the_whole_file_does; code:src/backend.rs:crate::github::coloured_diff(
+2026-11-10 · diff · A changed line shows what changed inside it, as GitHub does: => test:a_changed_line_marks_only_the_words_that_changed; test:removed_and_added_lines_pair_in_order

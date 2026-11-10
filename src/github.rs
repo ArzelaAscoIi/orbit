@@ -88,8 +88,113 @@ async fn raw(
             .await??
         }
     };
-    // parse colours the code: off the async workers.
-    Ok(tokio::task::spawn_blocking(move || parse(&text)).await?)
+    Ok(tokio::task::spawn_blocking(move || split(&text)).await?)
+}
+
+/// A PR's diff for the Diff tab, with its syntax colours: each file that
+/// shows only parts of itself is read whole at the PR's head, so a hunk
+/// that starts inside a docstring or a block comment reads right.
+pub async fn coloured_diff(
+    http: &reqwest::Client,
+    token: Option<&str>,
+    owner: &str,
+    repo: &str,
+    number: u64,
+) -> Result<Vec<File>> {
+    let mut files = diff(http, token, owner, repo, number).await?;
+    let pr = get(
+        http,
+        token,
+        &format!("repos/{owner}/{repo}/pulls/{number}"),
+        "application/vnd.github+json",
+    )
+    .await;
+    let head = pr
+        .ok()
+        .and_then(|pr| serde_json::from_str::<serde_json::Value>(&pr).ok())
+        .and_then(|pr| pr["head"]["sha"].as_str().map(str::to_owned));
+    let mut heads = tokio::task::JoinSet::new();
+    if let Some(head) = head {
+        // ponytail: one request per file, capped; a bigger PR reads its later files by hunk.
+        let partial = files.iter().enumerate().filter(|(_, f)| {
+            crate::syntax::colours(f) && f.lines.iter().any(|l| matches!(l, Line::Context(_)))
+        });
+        for (i, file) in partial.take(HEAD_FILES) {
+            let (http, token) = (http.clone(), token.map(str::to_owned));
+            let path = format!(
+                "repos/{owner}/{repo}/contents/{}?ref={head}",
+                encode(&file.path)
+            );
+            heads.spawn(async move {
+                let text = get(&http, token.as_deref(), &path, "application/vnd.github.raw").await;
+                (i, text.ok())
+            });
+        }
+    }
+    let mut whole: Vec<Option<String>> = vec![None; files.len()];
+    while let Some(Ok((i, text))) = heads.join_next().await {
+        whole[i] = text;
+    }
+    // Colouring reads every line: off the async workers.
+    Ok(tokio::task::spawn_blocking(move || {
+        for (file, head) in files.iter_mut().zip(&whole) {
+            file.spans = crate::syntax::spans(file, head.as_deref());
+        }
+        files
+    })
+    .await?)
+}
+
+/// At most this many files of one PR are read whole for their colours.
+const HEAD_FILES: usize = 60;
+
+/// A path for a URL: every byte but letters, digits, `/-._~` escaped.
+fn encode(path: &str) -> String {
+    path.bytes()
+        .map(|b| match b {
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'/' | b'-' | b'.' | b'_' | b'~' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+/// A REST GET's body: with the token, else through `gh` as the user.
+async fn get(
+    http: &reqwest::Client,
+    token: Option<&str>,
+    path: &str,
+    accept: &str,
+) -> Result<String> {
+    if let Some(token) = token {
+        let response = http
+            .get(format!("https://api.github.com/{path}"))
+            .header("Accept", accept)
+            .header("Authorization", format!("Bearer {token}"))
+            .header("User-Agent", crate::NAME)
+            .send()
+            .await
+            .map_err(|error| anyhow!("network error: {}", error.without_url()))?;
+        let status = response.status();
+        if !status.is_success() {
+            bail!("GitHub answered {status}");
+        }
+        return Ok(response.text().await?);
+    }
+    let args = [
+        "api",
+        "--hostname",
+        "github.com",
+        "-H",
+        &format!("Accept: {accept}"),
+        path,
+    ]
+    .map(str::to_owned);
+    tokio::task::spawn_blocking(move || {
+        crate::claude::gh(&args.iter().map(String::as_str).collect::<Vec<_>>())
+    })
+    .await?
 }
 
 /// Whether a PR may be merged right now, asked live, and what GitHub says
@@ -1565,6 +1670,15 @@ fn render(files: &[File], limit: usize, numbered: bool) -> String {
 
 /// Splits a unified diff into files and classified, coloured lines.
 pub fn parse(text: &str) -> Vec<File> {
+    let mut files = split(text);
+    for file in &mut files {
+        file.spans = crate::syntax::spans(file, None);
+    }
+    files
+}
+
+/// Splits a unified diff into files and classified lines, no colours.
+fn split(text: &str) -> Vec<File> {
     let mut files: Vec<File> = Vec::new();
     for line in text.lines() {
         if let Some(rest) = line.strip_prefix("diff --git ") {
@@ -1581,7 +1695,12 @@ pub fn parse(text: &str) -> Vec<File> {
         let Some(file) = files.last_mut() else {
             continue;
         };
-        if line.starts_with("+++") || line.starts_with("---") || line.starts_with("index ") {
+        // `\ No newline at end of file` is about the line before, not a line.
+        if line.starts_with("+++")
+            || line.starts_with("---")
+            || line.starts_with("index ")
+            || line.starts_with('\\')
+        {
             continue;
         }
         let parsed = if let Some(hunk) = line.strip_prefix("@@") {
@@ -1599,10 +1718,6 @@ pub fn parse(text: &str) -> Vec<File> {
             Line::Context(line.strip_prefix(' ').unwrap_or(line).to_owned())
         };
         file.lines.push(parsed);
-    }
-    // Syntax colours once, as it loads, never per frame.
-    for file in &mut files {
-        file.spans = crate::syntax::spans(file);
     }
     files
 }

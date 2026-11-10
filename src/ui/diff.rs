@@ -523,7 +523,8 @@ fn cell(cx: &Cx, n: usize, width: Option<(f32, bool)>, ui: &mut Ui) {
                         .color(p().text_3);
                     ui.label(gutter);
                 }
-                let job = code(sign, text, color, snippet, spans, on);
+                let changed = changed_at(cx.file, n);
+                let job = code(sign, text, color, snippet, spans, changed, on);
                 ui.add(egui::Label::new(job).wrap());
             });
         });
@@ -1566,13 +1567,15 @@ fn first_focus(ui: &Ui, step: Option<&Step>, file: &File, n: usize) -> bool {
 }
 
 /// A diff line in mono after its sign: the code in its syntax colours
-/// (read on `on`), the characters a note is about washed.
+/// (read on `on`), the part that changed against its paired line darker,
+/// as GitHub shows it, the characters a note is about washed.
 fn code(
     sign: &str,
     text: &str,
     color: Color32,
     snippet: Option<&str>,
     spans: &[crate::syntax::Span],
+    changed: Option<std::ops::Range<usize>>,
     on: Color32,
 ) -> egui::text::LayoutJob {
     let font = egui::FontId::monospace(12.0);
@@ -1580,11 +1583,21 @@ fn code(
     let mut job = egui::text::LayoutJob::default();
     job.append(&format!("{sign} "), 0.0, plain.clone());
     let marked = snippet.and_then(|s| text.find(s).map(|at| at..at + s.len()));
-    for (range, kind, mark) in runs(text, spans, marked) {
+    let strong = match sign {
+        "+" => p().diff_text.gamma_multiply(0.3),
+        _ => p().danger.gamma_multiply(0.35),
+    };
+    for (range, kind, mark) in runs(text, spans, marked, changed.clone()) {
         let mut format = egui::TextFormat {
             color: kind.map_or(color, |k| crate::theme::syntax(k, on)),
             ..plain.clone()
         };
+        if changed
+            .as_ref()
+            .is_some_and(|c| c.start <= range.start && range.end <= c.end)
+        {
+            format.background = strong;
+        }
         if mark {
             format.background = wash(p().signal).gamma_multiply(2.5);
             format.underline = Stroke::new(1.0, p().signal);
@@ -1594,6 +1607,90 @@ fn code(
     job
 }
 
+/// The part of diff line `n` (1-based) that differs from its partner: in a
+/// block of removed lines followed by added ones, the i-th removed pairs
+/// with the i-th added. The common start and end are cut off at word
+/// edges; `None` for an unpaired line or one with too little in common.
+fn changed_at(file: &File, n: usize) -> Option<std::ops::Range<usize>> {
+    let lines = &file.lines;
+    let i = n.checked_sub(1)?;
+    if !matches!(lines.get(i)?, Line::Removed(_) | Line::Added(_)) {
+        return None;
+    }
+    let mut start = i;
+    while start > 0 && matches!(lines[start - 1], Line::Removed(_) | Line::Added(_)) {
+        start -= 1;
+    }
+    let block = lines[start..]
+        .iter()
+        .take_while(|l| matches!(l, Line::Removed(_) | Line::Added(_)));
+    let removed: Vec<(usize, &str)> = block
+        .clone()
+        .enumerate()
+        .filter_map(|(k, l)| match l {
+            Line::Removed(t) => Some((start + k, t.as_str())),
+            _ => None,
+        })
+        .collect();
+    let added: Vec<(usize, &str)> = block
+        .enumerate()
+        .filter_map(|(k, l)| match l {
+            Line::Added(t) => Some((start + k, t.as_str())),
+            _ => None,
+        })
+        .collect();
+    let (old, new, mine) = match removed.iter().position(|(at, _)| *at == i) {
+        Some(k) => (removed[k].1, added.get(k)?.1, 0),
+        None => {
+            let k = added.iter().position(|(at, _)| *at == i)?;
+            (removed.get(k)?.1, added[k].1, 1)
+        }
+    };
+    let (a, b) = differ(old, new)?;
+    Some([a, b][mine].clone())
+}
+
+/// Where `old` and `new` differ, in each: what is left after their common
+/// start and end, widened to whole words. `None` when they share fewer
+/// than a few characters (the whole line changed) or nothing differs.
+fn differ(old: &str, new: &str) -> Option<(std::ops::Range<usize>, std::ops::Range<usize>)> {
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    let prefix = old
+        .char_indices()
+        .zip(new.chars())
+        .find(|((_, a), b)| a != b)
+        .map_or(old.len().min(new.len()), |((at, _), _)| at);
+    let mut prefix = prefix.min(new.len());
+    while !new.is_char_boundary(prefix) || !old.is_char_boundary(prefix) {
+        prefix -= 1;
+    }
+    let suffix = old[prefix..]
+        .chars()
+        .rev()
+        .zip(new[prefix..].chars().rev())
+        .take_while(|(a, b)| a == b)
+        .map(|(a, _)| a.len_utf8())
+        .sum::<usize>();
+    // A change inside a word marks the whole word.
+    let before = |s: &str, at: usize| s[..at].chars().next_back();
+    let after = |s: &str, at: usize| s[at..].chars().next();
+    while let Some(c) = before(old, prefix).filter(|&c| word(c))
+        && (after(old, prefix).is_some_and(word) || after(new, prefix).is_some_and(word))
+    {
+        prefix -= c.len_utf8();
+    }
+    let mut suffix = suffix;
+    while let Some(c) = after(old, old.len() - suffix).filter(|&c| suffix > 0 && word(c))
+        && (before(old, old.len() - suffix).is_some_and(word)
+            || before(new, new.len() - suffix).is_some_and(word))
+    {
+        suffix -= c.len_utf8();
+    }
+    let (a, b) = (prefix..old.len() - suffix, prefix..new.len() - suffix);
+    let common = prefix + suffix;
+    (common >= 3 && (!a.is_empty() || !b.is_empty())).then_some((a, b))
+}
+
 /// `text` cut where a syntax span or the marked snippet starts or ends:
 /// each piece with its kind (none: the line's own colour) and whether it is
 /// marked.
@@ -1601,8 +1698,12 @@ fn runs(
     text: &str,
     spans: &[crate::syntax::Span],
     marked: Option<std::ops::Range<usize>>,
+    changed: Option<std::ops::Range<usize>>,
 ) -> Vec<(std::ops::Range<usize>, Option<crate::syntax::Kind>, bool)> {
     let mut cuts: Vec<usize> = vec![0, text.len()];
+    if let Some(c) = &changed {
+        cuts.extend([c.start, c.end]);
+    }
     for (range, _) in spans {
         cuts.extend([range.start, range.end]);
     }
@@ -1634,7 +1735,7 @@ mod tests {
         use crate::syntax::Kind;
         let text = "def f(): pass";
         let spans = vec![(0..3, Kind::Keyword), (4..5, Kind::Name)];
-        let runs = runs(text, &spans, Some(2..6));
+        let runs = runs(text, &spans, Some(2..6), None);
         let pieces: Vec<(&str, Option<Kind>, bool)> = runs
             .iter()
             .map(|(r, k, m)| (&text[r.clone()], *k, *m))
@@ -1650,6 +1751,44 @@ mod tests {
                 ("): pass", None, false),
             ]
         );
+    }
+
+    #[test]
+    fn a_changed_line_marks_only_the_words_that_changed() {
+        let (a, b) = super::differ("let pods = 3;", "let pods = 12;").unwrap();
+        assert_eq!((&"let pods = 3;"[a], &"let pods = 12;"[b]), ("3", "12"));
+        // A word changed in its middle is marked whole.
+        let (a, b) = super::differ("scale_up(x)", "scale_down(x)").unwrap();
+        assert_eq!(
+            (&"scale_up(x)"[a], &"scale_down(x)"[b]),
+            ("scale_up", "scale_down")
+        );
+        // Text cut at the end marks only what went.
+        let (a, b) = super::differ("ok; before, x.", "ok.").unwrap();
+        assert_eq!((&"ok; before, x."[a], &"ok."[b]), ("; before, x", ""));
+        assert_eq!(super::differ("abc", "xyz"), None);
+        assert_eq!(super::differ("same", "same"), None);
+    }
+
+    #[test]
+    fn removed_and_added_lines_pair_in_order() {
+        use crate::github::{File, Line};
+        let file = File {
+            path: "a.py".into(),
+            added: 2,
+            removed: 1,
+            lines: vec![
+                Line::Context("x".into()),
+                Line::Removed("pods = 3".into()),
+                Line::Added("pods = 4".into()),
+                Line::Added("new line".into()),
+            ],
+            spans: Vec::new(),
+        };
+        assert_eq!(super::changed_at(&file, 2), Some(7..8));
+        assert_eq!(super::changed_at(&file, 3), Some(7..8));
+        assert_eq!(super::changed_at(&file, 4), None);
+        assert_eq!(super::changed_at(&file, 1), None);
     }
 
     #[test]

@@ -114,7 +114,8 @@ Read:
                                   `work`: its ticket's Linear state or its PR's
                                   (open, merged, closed), `finished` when done;
                                   `run`: its last note, the question or approval
-                                  it waits on (`asks`), its PR, why it failed
+                                  it waits on (`asks`), its PR (`prs`: all),
+                                  why it failed, `last`: its current state's text
   orbit ctl inbox                 Notifications rows
   orbit ctl alerts                alerts of the last day, live incidents, release runs,
                                   and the sessions already on them
@@ -126,7 +127,15 @@ Act:
   orbit ctl do '<Action JSON>'    press one button, e.g. '{\"Show\":\"Sessions\"}',
                                   '\"Refresh\"', '{\"Select\":\"<ticket id>\"}'
   orbit ctl show <View>           ForYou, Intake, Sessions, Ktlo, Inbox, Alerts, Repos, ...
-  orbit ctl open <DEV-1|id>       open a ticket in the active pane
+  orbit ctl open <DEV-1|id|key>   open a ticket in the active pane; a session's
+                                  key: that session, with Orbit brought to front
+  orbit ctl start <key> <name…>   start a session for your own work item, the
+                                  first message read from stdin: key `free:` and
+                                  letters, digits, - or _ (e.g. free:task-42);
+                                  in the background, Orbit's view stays; a key
+                                  it already has starts nothing; answers key, link
+  orbit ctl send <key>            type stdin into the session and send it; refused
+                                  while it waits on an approval (the user's)
   orbit ctl close <DEV-1|key|short id>
                                   close a session: stopped and off Orbit's list;
                                   Claude Code keeps the conversation
@@ -210,6 +219,21 @@ pub fn main(args: &[String]) -> i32 {
         },
         (Some("show"), Some(view)) => json!({"cmd": "do", "action": {"Show": view}}),
         (Some("open"), Some(id)) => json!({"cmd": "open", "id": id}),
+        (Some(cmd @ ("start" | "send")), Some(key)) => {
+            let text = std::io::read_to_string(std::io::stdin()).unwrap_or_default();
+            if text.trim().is_empty() {
+                eprintln!("orbit ctl {cmd} <key>: the text comes on stdin");
+                return 2;
+            }
+            match cmd {
+                "start" => json!({"cmd": "do", "action": {"StartSession": {
+                    "key": key, "name": args[2..].join(" "), "prompt": text.trim_end(),
+                }}}),
+                _ => {
+                    json!({"cmd": "do", "action": {"SendLine": {"key": key, "text": text.trim_end()}}})
+                }
+            }
+        }
         (Some("close"), Some(id)) => json!({"cmd": "close", "id": id}),
         // `drive`, `undrive` and `initiatives`: the old names, still taken.
         (Some("mission"), Some("stop")) | (Some("undrive"), Some(_)) => {

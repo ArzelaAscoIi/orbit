@@ -58,7 +58,7 @@ src/ui/            drawing only; every function takes &App and pushes Actions
   testing.rs       Testing tab: the ticket's test plan, steps to tick, commands to copy, a browser for UI plans, Mark done
   tutorial.rs      guided tour: STEPS (view + anchor + text), mark(), overlay; `tutorial` link in the sidebar footer
 src/backend.rs     tokio runtime; Command in, Event out
-src/control.rs     `orbit ctl`: <data>/orbit.sock (first copy serves), the CLI (`close`, `sessions` with each one's work state), `actions` read from the Action enum's source
+src/control.rs     `orbit ctl`: <data>/orbit.sock (first copy serves), the CLI (`close`, `sessions` with each one's work state), `actions` read from the Action enum's source; `start`/`send`/`open <key>`: another program's own work items as background sessions (StartSession, SendLine)
 src/linear.rs      GraphQL client: home(), save_note (idempotent by URL), set_state, add_comment
 src/editor.rs      the plain text editor pane (Surface::Editor): shift() moves selected lines (Tab, Shift+Tab: shared indent), save() to a typed path; text in App::editors, memory only
 src/browser.rs     embedded WebKit view (wry, macOS only) for UI test plans: views place() it per frame, App::ui follows; hidden under the tutorial

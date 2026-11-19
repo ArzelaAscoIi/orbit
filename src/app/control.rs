@@ -80,7 +80,15 @@ impl App {
                     // As the palette opens one: the right window, the Ticket tab.
                     self.press(json!({ "Focus": id }), ctx)
                 }
-                None => fail(format!("no ticket {id} on the board")),
+                // A session (one a program started): shown, and Orbit in front.
+                None => match self.session_key(id) {
+                    Some(key) => {
+                        let answer = self.press(json!({ "OpenSession": key }), ctx);
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                        answer
+                    }
+                    None => fail(format!("no ticket {id} on the board, and no session")),
+                },
             },
             "state" => self.control_state(),
             "tickets" => {
@@ -285,6 +293,11 @@ impl App {
             Err(e) => return fail(format!("not an action ({e}); see orbit ctl actions")),
         };
         let event = name(&action);
+        // A started session's key and link come back, for the program's own records.
+        let started = match &action {
+            Action::StartSession { key, .. } => Some(key.clone()),
+            _ => None,
+        };
         if yours(&action) {
             return fail(format!(
                 "{event} is the user's alone (gate yours): only their click in Orbit does it"
@@ -313,7 +326,13 @@ impl App {
         self.apply(action, ctx);
         ctx.request_repaint();
         let error = self.error.clone().filter(|e| Some(e) != before.as_ref());
-        json!({"ok": error.is_none(), "action": event, "gate": gate, "error": error})
+        let mut answer =
+            json!({"ok": error.is_none(), "action": event, "gate": gate, "error": error});
+        if let Some(key) = started.filter(|_| error.is_none()) {
+            answer["link"] = json!(format!("orbit://session/{key}"));
+            answer["key"] = json!(key);
+        }
+        answer
     }
 
     fn control_state(&self) -> Value {
@@ -534,7 +553,8 @@ impl App {
 
 /// What a run is doing, from its status log, so a driving agent reads it
 /// without opening the session: its own last note, the question or
-/// approval it waits on, its PR, why it failed.
+/// approval it waits on, its PR (`prs`: every one), why it failed, and
+/// `last`: the text of its current state (Claude's last line on a turn).
 fn run_of(reports: &[crate::claude::status::Report]) -> Value {
     use crate::claude::status::{self, State};
     let text = |r: Option<&status::Report>| r.map(|r| r.text.clone());
@@ -544,7 +564,9 @@ fn run_of(reports: &[crate::claude::status::Report]) -> Value {
         "note": text(status::note(reports)),
         "asks": text(asks),
         "pr": text(status::pr(reports)),
+        "prs": status::prs(reports),
         "failed": text(status::failed(reports)),
+        "last": text(status::current(reports)),
     })
 }
 
@@ -795,6 +817,51 @@ mod tests {
             "answered or gone: not asking any more"
         );
         assert_eq!(run["failed"], "Workspace not trusted");
+    }
+
+    #[test]
+    fn a_session_row_lists_every_pr_and_its_current_line() {
+        use crate::claude::status::{Report, State};
+        let at = |state, text: &str| Report {
+            at: std::time::SystemTime::now(),
+            state,
+            text: text.into(),
+        };
+        let run = run_of(&[
+            at(State::Pr, "https://github.com/o/r/pull/1"),
+            at(State::Working, ""),
+            at(State::Pr, "https://github.com/o/r/pull/2"),
+            at(State::Pr, "https://github.com/o/r/pull/1"),
+            at(State::Turn, "Both PRs are up."),
+        ]);
+        assert_eq!(
+            run["prs"],
+            json!([
+                "https://github.com/o/r/pull/1",
+                "https://github.com/o/r/pull/2"
+            ])
+        );
+        assert_eq!(run["last"], "Both PRs are up.");
+    }
+
+    #[test]
+    fn a_program_starts_and_writes_to_its_own_sessions_only_as_do() {
+        let parse = |v: Value| serde_json::from_value::<Action>(v).unwrap();
+        let start = parse(
+            json!({"StartSession": {"key": "free:task-42", "name": "Task 42", "prompt": "Do it"}}),
+        );
+        let send = parse(json!({"SendLine": {"key": "free:task-42", "text": "go on"}}));
+        for action in [&start, &send] {
+            assert!(!yours(action) && !app_only(action));
+            assert!(foreign_folder(action, std::path::Path::new("/d/work")).is_none());
+            assert_eq!(
+                crate::activity::gate(&name(action)),
+                Some(crate::activity::Gate::Do)
+            );
+            assert!(
+                matches!(super::super::target(action), Some(super::super::Target::Session(k)) if k == "free:task-42")
+            );
+        }
     }
 
     #[test]

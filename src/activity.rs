@@ -110,6 +110,8 @@ pub const GATES: &[(&str, Gate)] = &[
     ("Clone", Gate::Do),
     ("PassTask", Gate::App),
     ("NewSession", Gate::Do),
+    ("StartSession", Gate::Do),
+    ("SendLine", Gate::Do),
     ("CodexPrompt", Gate::Do),
     ("Guide", Gate::Do),
     ("GuideStep", Gate::Do),

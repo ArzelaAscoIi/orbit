@@ -418,6 +418,21 @@ pub enum Action {
         name: String,
         folder: Option<String>,
     },
+    /// Starts a session for work another program tracks (`orbit ctl
+    /// start`): its own `free:` key, a name and the first message, in
+    /// Orbit's work folder. In the background: what Orbit shows stays. A
+    /// key Orbit already has starts nothing.
+    StartSession {
+        key: String,
+        name: String,
+        prompt: String,
+    },
+    /// Types a line into a session and sends it (`orbit ctl send`); never
+    /// while the session waits on an approval, which is the user's.
+    SendLine {
+        key: String,
+        text: String,
+    },
     /// Splits the focused pane: to the right (`across`) or below.
     Split {
         across: bool,
@@ -2873,6 +2888,7 @@ fn target(action: &Action) -> Option<Target> {
         | A::StopSession(key)
         | A::CloseSession(key)
         | A::FreshSession(key) => Target::Session(key.clone()),
+        A::StartSession { key, .. } | A::SendLine { key, .. } => Target::Session(key.clone()),
         A::InboxOpen(key) | A::InboxDone(key) => Target::Inbox(key.clone()),
         _ => return None,
     })

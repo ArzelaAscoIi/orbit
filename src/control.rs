@@ -23,6 +23,24 @@ pub fn path() -> PathBuf {
     crate::store::data_dir().join("orbit.sock")
 }
 
+/// The socket at `path`, private to this user. Its folder is made first:
+/// on the very first start the data folder does not exist yet, and without
+/// it the bind failed and Orbit never answered.
+fn bind(path: &std::path::Path) -> Option<UnixListener> {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::fs::remove_file(path);
+    // Only this user may reach the socket, even in the moment between bind
+    // and the chmod below: its folder (the data folder, keys.json's too) is
+    // private first.
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+        let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+    }
+    let listener = UnixListener::bind(path).ok()?;
+    let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    Some(listener)
+}
+
 /// Serves the socket unless another copy already does (it answers a
 /// connect). A file left by a copy that quit is removed first.
 /// ponytail: the copy that serves quitting leaves the others unserved
@@ -32,19 +50,7 @@ pub fn serve(ctx: egui::Context) -> Option<mpsc::Receiver<Request>> {
     if UnixStream::connect(&path).is_ok() {
         return None;
     }
-    let _ = std::fs::remove_file(&path);
-    // Only this user may reach the socket, even in the moment between bind
-    // and the chmod below: its folder (the data folder, keys.json's too) is
-    // private first.
-    if let Some(dir) = path.parent() {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
-    }
-    let listener = UnixListener::bind(&path).ok()?;
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
+    let listener = bind(&path)?;
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
@@ -114,7 +120,8 @@ Read:
                                   `work`: its ticket's Linear state or its PR's
                                   (open, merged, closed), `finished` when done;
                                   `run`: its last note, the question or approval
-                                  it waits on (`asks`), its PR, why it failed
+                                  it waits on (`asks`), its PR (`prs`: all),
+                                  why it failed, `last`: its current state's text
   orbit ctl inbox                 Notifications rows
   orbit ctl alerts                alerts of the last day, live incidents, release runs,
                                   and the sessions already on them
@@ -126,7 +133,15 @@ Act:
   orbit ctl do '<Action JSON>'    press one button, e.g. '{\"Show\":\"Sessions\"}',
                                   '\"Refresh\"', '{\"Select\":\"<ticket id>\"}'
   orbit ctl show <View>           ForYou, Intake, Sessions, Ktlo, Inbox, Alerts, Repos, ...
-  orbit ctl open <DEV-1|id>       open a ticket in the active pane
+  orbit ctl open <DEV-1|id|key>   open a ticket in the active pane; a session's
+                                  key: that session, with Orbit brought to front
+  orbit ctl start <key> <name…>   start a session for your own work item, the
+                                  first message read from stdin: key `free:` and
+                                  letters, digits, - or _ (e.g. free:task-42);
+                                  in the background, Orbit's view stays; a key
+                                  it already has starts nothing; answers key, link
+  orbit ctl send <key>            type stdin into the session and send it; refused
+                                  while it waits on an approval (the user's)
   orbit ctl close <DEV-1|key|short id>
                                   close a session: stopped and off Orbit's list;
                                   Claude Code keeps the conversation
@@ -210,6 +225,21 @@ pub fn main(args: &[String]) -> i32 {
         },
         (Some("show"), Some(view)) => json!({"cmd": "do", "action": {"Show": view}}),
         (Some("open"), Some(id)) => json!({"cmd": "open", "id": id}),
+        (Some(cmd @ ("start" | "send")), Some(key)) => {
+            let text = std::io::read_to_string(std::io::stdin()).unwrap_or_default();
+            if text.trim().is_empty() {
+                eprintln!("orbit ctl {cmd} <key>: the text comes on stdin");
+                return 2;
+            }
+            match cmd {
+                "start" => json!({"cmd": "do", "action": {"StartSession": {
+                    "key": key, "name": args[2..].join(" "), "prompt": text.trim_end(),
+                }}}),
+                _ => {
+                    json!({"cmd": "do", "action": {"SendLine": {"key": key, "text": text.trim_end()}}})
+                }
+            }
+        }
         (Some("close"), Some(id)) => json!({"cmd": "close", "id": id}),
         // `drive`, `undrive` and `initiatives`: the old names, still taken.
         (Some("mission"), Some("stop")) | (Some("undrive"), Some(_)) => {
@@ -437,6 +467,25 @@ pub fn actions() -> Vec<(String, String, String)> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn the_socket_is_served_on_the_first_start_too() {
+        use std::os::unix::fs::PermissionsExt;
+        // A socket path holds at most ~104 bytes on macOS: not the long temp dir.
+        let root = std::path::PathBuf::from(format!("/tmp/ofs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        // The data folder does not exist yet.
+        let path = root.join("data").join("orbit.sock");
+        let listener = bind(&path).expect("bound in a folder made for it");
+        assert!(UnixStream::connect(&path).is_ok());
+        let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(path.parent().unwrap()), 0o700);
+        assert_eq!(mode(&path), 0o600);
+        drop(listener);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn the_caller_is_the_session_claude_code_runs_not_a_stale_environment() {
         let saved: std::collections::BTreeMap<String, crate::claude::Saved> =

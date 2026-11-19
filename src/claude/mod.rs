@@ -354,6 +354,18 @@ pub const RELEASE: &str = "release:";
 /// Keys of sessions with no ticket: `free:<millis>`.
 pub const FREE: &str = "free:";
 
+/// A key another program chose for its session (`orbit ctl start`):
+/// `free:` and up to 80 letters, digits, `-` or `_`, as it names files.
+pub fn caller_key(key: &str) -> bool {
+    key.strip_prefix(FREE).is_some_and(|rest| {
+        !rest.is_empty()
+            && rest.len() <= 80
+            && rest
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    })
+}
+
 /// A new key for a session with no ticket.
 pub fn free_key() -> String {
     let millis = std::time::SystemTime::now()
@@ -2842,6 +2854,17 @@ pub fn triage(teams: &[String], skills: Vec<(String, String)>) -> Spec {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_program_picks_a_session_key_that_names_a_file() {
+        assert!(super::caller_key("free:task-42"));
+        assert!(super::caller_key("free:cu-86abc_1"));
+        assert!(!super::caller_key("free:"));
+        assert!(!super::caller_key("free:../x"));
+        assert!(!super::caller_key("free:a b"));
+        assert!(!super::caller_key("task-42"));
+        assert!(!super::caller_key(&format!("free:{}", "a".repeat(81))));
+    }
+
     #[test]
     fn only_the_agent_view_is_picked_never_a_json_list_or_a_session() {
         let ps = "  101 /Users/me/.local/bin/claude agents\n\

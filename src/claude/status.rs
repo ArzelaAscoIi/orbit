@@ -296,6 +296,17 @@ pub fn failed(reports: &[Report]) -> Option<&Report> {
         .filter(|r| r.state == State::Failed)
 }
 
+/// Every pull request the session's commands mentioned, first first, once each.
+pub fn prs(reports: &[Report]) -> Vec<String> {
+    let mut prs: Vec<String> = Vec::new();
+    for r in reports.iter().filter(|r| r.state == State::Pr) {
+        if !prs.contains(&r.text) {
+            prs.push(r.text.clone());
+        }
+    }
+    prs
+}
+
 /// The last pull request the session's commands mentioned.
 pub fn pr(reports: &[Report]) -> Option<&Report> {
     reports.iter().rev().find(|r| r.state == State::Pr)

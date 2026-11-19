@@ -24,6 +24,16 @@ pub(crate) fn quiet_ms(card: &crate::story::Card, moved: Option<u64>, now: u64) 
     now.saturating_sub(moved.unwrap_or(now).max(last_word))
 }
 
+/// Why a line a program sends (`SendLine`) is not typed: a session Orbit
+/// does not have, or one waiting on an approval, which is the user's alone.
+fn line_refused(key: &str, known: bool, label: Option<&str>) -> Option<String> {
+    if !known {
+        return Some(format!("no session {key}"));
+    }
+    (label == Some("needs approval"))
+        .then(|| format!("{key} waits on an approval: only the user answers it, in Orbit"))
+}
+
 impl App {
     /// The browser in `slot`: the Testing tab's, or a browser pane's.
     fn browser_in(&mut self, slot: u64) -> Option<&mut crate::browser::Browser> {
@@ -1555,6 +1565,30 @@ impl App {
                 self.session = Some(key.clone());
                 self.tab = Tab::Claude;
                 self.claude.open(spec, ctx);
+            }
+            Action::StartSession { key, name, prompt } => {
+                if !claude::caller_key(&key) {
+                    self.error = Some(format!(
+                        "not a session key: {key} (free: and letters, digits, - or _)"
+                    ));
+                } else if !self.claude.saved.contains_key(&key) && !self.claude.busy(&key) {
+                    let mut spec = claude::free(&key, &name, None, self.skill_files());
+                    spec.prompt = Some(prompt);
+                    // No pane, no window: started for a program, shown on `open`.
+                    self.claude.open(spec, ctx);
+                }
+            }
+            Action::SendLine { key, text } => {
+                let label = self.claude.row_of(&key).map(|r| r.label().to_owned());
+                let known = self.claude.saved.contains_key(&key);
+                if let Some(why) = line_refused(&key, known, label.as_deref()) {
+                    self.error = Some(why);
+                } else {
+                    if !self.claude.is_attached(&key) {
+                        self.apply(Action::Attach(key.clone()), ctx);
+                    }
+                    self.claude.type_line(&key, text, true);
+                }
             }
             Action::Attach(key) if key.starts_with("sid:") => {
                 self.claude.attach_external(&key, ctx);
@@ -4059,6 +4093,14 @@ fn ticket_of(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_program_types_into_its_session_but_never_answers_an_approval() {
+        assert!(super::line_refused("free:a", false, None).is_some());
+        assert!(super::line_refused("free:a", true, Some("needs approval")).is_some());
+        assert!(super::line_refused("free:a", true, Some("your turn")).is_none());
+        assert!(super::line_refused("free:a", true, None).is_none());
+    }
+
     #[test]
     fn a_closed_report_keeps_its_note_until_filed() {
         let mut capture = crate::app::Capture {

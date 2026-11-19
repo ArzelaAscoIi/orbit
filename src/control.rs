@@ -23,6 +23,24 @@ pub fn path() -> PathBuf {
     crate::store::data_dir().join("orbit.sock")
 }
 
+/// The socket at `path`, private to this user. Its folder is made first:
+/// on the very first start the data folder does not exist yet, and without
+/// it the bind failed and Orbit never answered.
+fn bind(path: &std::path::Path) -> Option<UnixListener> {
+    use std::os::unix::fs::PermissionsExt;
+    let _ = std::fs::remove_file(path);
+    // Only this user may reach the socket, even in the moment between bind
+    // and the chmod below: its folder (the data folder, keys.json's too) is
+    // private first.
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+        let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+    }
+    let listener = UnixListener::bind(path).ok()?;
+    let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    Some(listener)
+}
+
 /// Serves the socket unless another copy already does (it answers a
 /// connect). A file left by a copy that quit is removed first.
 /// ponytail: the copy that serves quitting leaves the others unserved
@@ -32,19 +50,7 @@ pub fn serve(ctx: egui::Context) -> Option<mpsc::Receiver<Request>> {
     if UnixStream::connect(&path).is_ok() {
         return None;
     }
-    let _ = std::fs::remove_file(&path);
-    // Only this user may reach the socket, even in the moment between bind
-    // and the chmod below: its folder (the data folder, keys.json's too) is
-    // private first.
-    if let Some(dir) = path.parent() {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
-    }
-    let listener = UnixListener::bind(&path).ok()?;
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
+    let listener = bind(&path)?;
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
@@ -461,6 +467,25 @@ pub fn actions() -> Vec<(String, String, String)> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn the_socket_is_served_on_the_first_start_too() {
+        use std::os::unix::fs::PermissionsExt;
+        // A socket path holds at most ~104 bytes on macOS: not the long temp dir.
+        let root = std::path::PathBuf::from(format!("/tmp/ofs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        // The data folder does not exist yet.
+        let path = root.join("data").join("orbit.sock");
+        let listener = bind(&path).expect("bound in a folder made for it");
+        assert!(UnixStream::connect(&path).is_ok());
+        let mode = |p: &std::path::Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(path.parent().unwrap()), 0o700);
+        assert_eq!(mode(&path), 0o600);
+        drop(listener);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[test]
     fn the_caller_is_the_session_claude_code_runs_not_a_stale_environment() {
         let saved: std::collections::BTreeMap<String, crate::claude::Saved> =
